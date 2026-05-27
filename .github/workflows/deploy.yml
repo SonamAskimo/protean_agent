@@ -1,0 +1,53 @@
+name: Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Log in to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Log in to ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}
+          username: ${{ secrets.AZURE_REGISTRY_USERNAME }}
+          password: ${{ secrets.AZURE_REGISTRY_PASSWORD }}
+
+      - name: Build and push Docker image
+        env:
+          IMAGE_NAME: protean-agent
+        run: |
+          docker build -t ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/${IMAGE_NAME}:${{ github.sha }} .
+          docker push ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/${IMAGE_NAME}:${{ github.sha }}
+
+      # ingress targetPort must match the container listen port (image default PORT=80).
+      # Do not wrap ${{ }} in quotes — ACA can treat quotes as part of the value.
+      - name: Deploy to Azure Container Apps
+        uses: azure/container-apps-deploy-action@v1
+        env:
+          IMAGE_NAME: protean-agent
+        with:
+          resourceGroup: ${{ secrets.AZURE_CONTAINERAPPS_RESOURCE_GROUP }}
+          containerAppName: ${{ secrets.AZURE_CONTAINERAPPS_APP_NAME }}
+          imageToDeploy: ${{ secrets.AZURE_REGISTRY_LOGIN_SERVER }}/${IMAGE_NAME}:${{ github.sha }}
+          ingress: external
+          targetPort: ${{ secrets.PORT }}
+          environmentVariables: >
+            PORT=${{ secrets.PORT }}
+            APP_ENV=${{ secrets.APP_ENV }}
+            GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}
+            GEMINI_MODEL=${{ secrets.GEMINI_MODEL }}
+            GEMINI_VOICE=${{ secrets.GEMINI_VOICE }}
+            GEMINI_TEMPERATURE=${{ secrets.GEMINI_TEMPERATURE }}
+            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}

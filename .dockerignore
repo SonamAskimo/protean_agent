@@ -1,0 +1,18 @@
+# Python
+**/__pycache__
+**/*.py[cod]
+**/.pytest_cache
+**/*.egg-info
+.venv
+venv
+**/venv
+
+# Local / secrets
+**/.env
+.git
+.cursor
+*.md
+
+# Large or irrelevant for runtime
+sessions
+uploads

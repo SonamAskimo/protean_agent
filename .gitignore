@@ -1,0 +1,16 @@
+.env
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+
+# Runtime data
+uploads/*
+!uploads/.gitkeep
+sessions/*
+!sessions/.gitkeep
+
+
+# Legacy / copied artifacts
+analytics/
+reference_files/

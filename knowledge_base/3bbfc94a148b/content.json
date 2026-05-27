@@ -1,0 +1,84 @@
+{
+  "content_type": "pdf",
+  "kind": "image",
+  "total_pages": 5,
+  "segments": [
+    {
+      "segment_id": "s_0001",
+      "pages": [
+        1
+      ],
+      "slide_index": 0,
+      "slide_url": "/api/kb/files/3bbfc94a148b/slides/slide_001.jpg",
+      "slide_file": "slide_001.jpg",
+      "source_text": "This appears to be a title or introductory slide for a presentation.\n\nCentral Branding: The main focus is the company logo for \"protean\", which is written in bold, lowercase black letters. Above the name is a vibrant, circular geometric emblem containing a lowercase orange \"p\" in the center, surrounded by a mosaic of red, yellow, green, blue, and purple segments. Below the company name is the tagline, \"Change is growth\".\n\nBackground Elements: The primary background is white. On the left side, there is a large, partially visible, faded graphic in pastel colors that mirrors the segmented, circular design of the main logo.\n\nFooter Text: Across the bottom of the slide is a gradient band that transitions from orange on the left to a teal-green on the right. On the left side of this band, there is white text that reads:\n\n\"Protean Value-Added Services\"\n\n\"ProSure (Product Feature & Detailed Customer Journey)\"",
+      "source_lang": "en",
+      "chapter_id": "",
+      "chapter_title": "Step-by-Step Guide",
+      "chapter_index": -1
+    },
+    {
+      "segment_id": "s_0002",
+      "pages": [
+        2
+      ],
+      "slide_index": 1,
+      "slide_url": "/api/kb/files/3bbfc94a148b/slides/slide_002.jpg",
+      "slide_file": "slide_002.jpg",
+      "source_text": "This slide is titled \"Key Highlights\" in red text in the top left corner and features the \"protean\" logo with its tagline in the top right corner. The background consists of a white canvas with the same faded, pastel geometric pattern from the previous slide visible on the left side.\n\nThe main content highlights four key features, each presented within an outlined hexagonal shape. Each shape is attached to a large, outlined number on its left side.\n\nHere is the breakdown of the four points:\n\nPoint 1: An orange outline number and hexagon. The text inside reads \"Unlimited Doctor\" in dark font, with \"Tele-consultation\" below it in blue font.\n\nPoint 2: A teal/green outline number and hexagon. The text reads \"Online Coaching Nutritionist\" in dark font, followed by \"4 times in a year\" in blue font.\n\nPoint 3: A light blue/grey outline number and hexagon. The text reads \"Discounts on\" in dark font, with \"Medicine & Lab test\" in blue font.\n\nPoint 4: A yellow/gold outline number and hexagon. The text reads \"Service Platform\" in dark font, and \"Multiple Service on one Platform\" underneath in blue font.",
+      "source_lang": "en",
+      "chapter_id": "",
+      "chapter_title": "Step-by-Step Guide",
+      "chapter_index": -1
+    },
+    {
+      "segment_id": "s_0003",
+      "pages": [
+        3
+      ],
+      "slide_index": 2,
+      "slide_url": "/api/kb/files/3bbfc94a148b/slides/slide_003.jpg",
+      "slide_file": "slide_003.jpg",
+      "source_text": "This slide is titled \"Key Propositions\" in bold red text and outlines the primary benefits and cost savings of the offered service.\n\nBranding and Layout: The left side features the \"protean\" logo and its tagline, \"Change is growth,\" overlaid on a large, faded pastel geometric pattern composed of concentric circular segments.\n\nMain Content: The right side of the slide contains a bulleted list detailing the value propositions in grey text:\n\nThe first point highlights the cost benefit, noting that standard one-time doctor consultations range from ₹200 to ₹300 per visit. It introduces the exclusive product where you can \"Pay just ₹299/- once and enjoy unlimited consultations for an entire year.\" (The phrase \"just ₹299/-\" is emphasized in red).\n\n\"Access expert medical advice without stepping out of your home\"\n\n\"Saves time by avoiding long queues at clinics and hospitals.\"\n\n\"Reduces travel costs and other related expenses\"\n\n\"Consult experienced and certified doctors anytime, anywhere\"",
+      "source_lang": "en",
+      "chapter_id": "",
+      "chapter_title": "Step-by-Step Guide",
+      "chapter_index": -1
+    },
+    {
+      "segment_id": "s_0004",
+      "pages": [
+        4
+      ],
+      "slide_index": 3,
+      "slide_url": "/api/kb/files/3bbfc94a148b/slides/slide_004.jpg",
+      "slide_file": "slide_004.jpg",
+      "source_text": "This slide details the specific features and pricing for the Doctor Tele-consultation service.\n\nHeader & Branding: The top left corner reads \"Doctor Tele-consultation\" in bold red text. The top right corner features the standard \"protean\" logo and its tagline, \"Change is growth\".\n\nKey Pricing Offer: On the left side, superimposed over the faded, pastel geometric background, is bold red text stating: \"Unlimited Doctor Tele-consultation Only Rs . 299/-\".\n\nService Breakdown: The center and right side of the slide are divided into two main sections, each pairing an illustration with descriptive text:\n\nTop Section (Consultations):\n\nGraphic: An illustration of a female doctor in a white coat appearing on a computer monitor, conducting a virtual consultation. Various medical icons (a first aid kit, clipboard, DNA strand, and heartbeat line) float around the screen.\n\nText: The heading reads \"Unlimited Doctor\" in dark blue, followed by \"Tele-consultation\" in light blue. The bulleted points below state:\n\n\"Avail unlimited online doctor consultation for 12 months\"\n\n\"Online Coaching Nutritionist – 4 times in a year\"\n\nBottom Section (Discounts):\n\nGraphic: An illustration featuring a large yellow shopping bag containing various medicine bottles and blister packs. In front of it, two small figures (a man and a woman) are standing next to a giant smartphone displaying a medical app with a \"BUY\" button.\n\nText: The heading reads \"Discounts on Medicine & Lab test\", with \"Discounts on\" in grey and the rest in light blue. The descriptive text below states: \"Get discounts on medicine purchase and lab tests\".",
+      "source_lang": "en",
+      "chapter_id": "",
+      "chapter_title": "Step-by-Step Guide",
+      "chapter_index": -1
+    },
+    {
+      "segment_id": "s_0005",
+      "pages": [
+        5
+      ],
+      "slide_index": 4,
+      "slide_url": "/api/kb/files/3bbfc94a148b/slides/slide_005.jpg",
+      "slide_file": "slide_005.jpg",
+      "source_text": "This slide serves as an instructional step in a user manual, demonstrating how to log into a specific web portal.\n\nHeader & Branding: The top left corner displays the title \"User Manual for Prosure Wellness services in Online PAAM System\" in bold red text. The top right corner features the \"protean\" logo and its tagline, \"Change is growth\".\n\nInstructional Text: Centered below the header is the main directive in black text: \"To access the Online PAAM system, please follow below steps. After Click “Submit” button to complete the login process.\"\n\nInterface Screenshot: The bulk of the slide consists of a screenshot of a web browser showing the login page for the \"Statement/Application Acceptance Module.\" A small text block on the page notes a geolocation monitoring requirement mandated by the Income Tax Department (ITD).\n\nGuided Login Steps: To assist the user, blue callout boxes with arrows overlay the screenshot, pointing to the corresponding fields:\n\nAn arrow points to the User ID text box with the instruction: \"Enter your User ID\".\n\nAn arrow points to the Password text box with the instruction: \"Enter your Password\".\n\nAn arrow points to the input box below a Captcha image (which reads \"JxLXR\") with the instruction: \"Enter the “Captcha” Text shown in the box above & click Submit\".\n\nAt the very bottom of the form are \"Submit\" and \"Reset\" buttons.",
+      "source_lang": "en",
+      "chapter_id": "",
+      "chapter_title": "Step-by-Step Guide",
+      "chapter_index": -1
+    }
+  ],
+  "chapters": [],
+  "chapter_segments": [],
+  "rag_segments": [],
+  "extracted_text": "",
+  "chapter_preview": "This appears to be a title or introductory slide for a presentation.\n\nCentral Branding: The main focus is the company logo for \"protean\", which is written in bold, lowercase black letters. Above the n This slide is titled \"Key Highlights\" in red text in the top left corner and features the \"protean\" logo with its tagline in the top right corner. The background consists of a white canvas with the sa This slide is titled \"Key Propositions\" in bold red text and outlines the primary benefits and cost savings of the offered service.\n\nBranding and Layout: The left side features the \"protean\" logo and ",
+  "inferred_subject": "ProSure Wellness Services Guide",
+  "extraction_mode": "image"
+}

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protean — Knowledge Base</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-deep: #f4f6fb;
+            --bg-surface: #ffffff;
+            --bg-card: rgba(255, 255, 255, 0.88);
+            --border-subtle: rgba(8, 145, 178, 0.1);
+            --border-glow: rgba(8, 145, 178, 0.25);
+            --cyan: #0891b2;
+            --cyan-dim: #0e7490;
+            --cyan-glow: rgba(8, 145, 178, 0.2);
+            --teal: #0d9488;
+            --amber: #d97706;
+            --amber-glow: rgba(217, 119, 6, 0.18);
+            --red: #dc2626;
+            --red-glow: rgba(220, 38, 38, 0.15);
+            --text-primary: #1a2035;
+            --text-secondary: #52607a;
+            --text-muted: #94a3b8;
+            --glass: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(0, 0, 0, 0.07);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', system-ui, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: 0;
+            background:
+                linear-gradient(rgba(8, 145, 178, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(8, 145, 178, 0.03) 1px, transparent 1px);
+            background-size: 64px 64px;
+            mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 100%);
+            pointer-events: none;
+        }
+        body::after {
+            content: '';
+            position: fixed; inset: 0; z-index: 0;
+            background: radial-gradient(ellipse 60% 50% at 50% 15%, rgba(8, 145, 178, 0.04), transparent 70%);
+            pointer-events: none;
+        }
+
+        .page {
+            position: relative; z-index: 1;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 48px 24px 64px;
+        }
+
+        .top-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 36px;
+        }
+        .brand-tag {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: .72rem;
+            letter-spacing: .32em;
+            text-transform: uppercase;
+            color: var(--cyan);
+        }
+        .nav-link {
+            font-family: 'Outfit', sans-serif;
+            font-size: .82rem;
+            font-weight: 600;
+            color: var(--cyan-dim);
+            text-decoration: none;
+            display: flex; align-items: center; gap: 6px;
+            transition: color .2s;
+        }
+        .nav-link:hover { color: var(--cyan); }
+
+        .page-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 2rem;
+            letter-spacing: -.02em;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+        }
+        .page-subtitle {
+            font-size: .9rem;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            line-height: 1.55;
+        }
+
+        /* upload card */
+        .upload-card {
+            position: relative;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 28px 28px 24px;
+            box-shadow: 0 8px 32px rgba(0, 40, 80, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+            margin-bottom: 32px;
+        }
+        .upload-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent 10%, var(--cyan) 50%, transparent 90%);
+            opacity: .45;
+        }
+
+        .form-row { margin-bottom: 14px; text-align: left; }
+        .form-row label {
+            display: block;
+            font-family: 'Outfit', sans-serif;
+            font-size: .78rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .file-drop {
+            border: 1.5px dashed rgba(8, 145, 178, 0.22);
+            border-radius: 14px;
+            padding: 20px 16px;
+            text-align: center;
+            transition: border-color .25s, background .25s;
+            cursor: pointer;
+            background: rgba(8, 145, 178, 0.02);
+        }
+        .file-drop:hover {
+            border-color: rgba(8, 145, 178, 0.4);
+            background: rgba(8, 145, 178, 0.04);
+        }
+        .file-drop input[type="file"] {
+            font-family: 'DM Sans', sans-serif;
+            font-size: .85rem;
+            color: var(--text-secondary);
+        }
+        .file-drop-hint {
+            font-size: .78rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .kind-row {
+            display: none;
+            margin-top: 12px;
+            gap: 16px;
+        }
+        .kind-row.visible { display: flex; }
+        .kind-option {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border: 1.5px solid rgba(0,0,0,0.08);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all .2s;
+            background: #fff;
+        }
+        .kind-option:hover { border-color: var(--cyan); }
+        .kind-option.selected {
+            border-color: var(--cyan);
+            background: #ecfeff;
+        }
+        .kind-option input { display: none; }
+        .kind-option .kind-icon { font-size: 1.1rem; color: var(--cyan); }
+        .kind-label-text {
+            font-family: 'Outfit', sans-serif;
+            font-size: .82rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .kind-desc {
+            font-size: .72rem;
+            color: var(--text-muted);
+        }
+
+        .primary-btn {
+            width: 100%; padding: 13px 20px; border: none; border-radius: 12px;
+            background: linear-gradient(135deg, var(--cyan) 0%, var(--cyan-dim) 100%);
+            color: #fff; font-family: 'Outfit', sans-serif;
+            font-size: .95rem; font-weight: 700; cursor: pointer;
+            margin-top: 14px;
+            transition: box-shadow .25s, transform .2s;
+            letter-spacing: .01em;
+        }
+        .primary-btn:hover {
+            box-shadow: 0 6px 24px var(--cyan-glow);
+            transform: translateY(-1px);
+        }
+        .primary-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .status-bar {
+            margin-top: 12px; padding: 10px 14px; border-radius: 10px;
+            font-size: .82rem; display: none; line-height: 1.45;
+        }
+        .status-bar.error { display: block; background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+        .status-bar.info  { display: block; background: #ecfeff; color: var(--cyan-dim); border: 1px solid #a5f3fc; }
+
+        /* file list */
+        .section-label {
+            font-family: 'Outfit', sans-serif;
+            font-size: .78rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .file-list { display: flex; flex-direction: column; gap: 10px; }
+
+        .file-entry {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 18px;
+            border-radius: 14px;
+            background: #fff;
+            border: 1px solid rgba(0,0,0,0.06);
+            box-shadow: 0 2px 8px rgba(0, 30, 60, 0.03);
+            transition: border-color .2s;
+        }
+        .file-entry:hover { border-color: rgba(8, 145, 178, 0.2); }
+
+        .file-icon {
+            width: 40px; height: 40px;
+            border-radius: 10px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+        .file-icon.pdf { background: #fef2f2; color: #dc2626; }
+        .file-icon.ppt { background: #fff7ed; color: #c2410c; }
+
+        .file-info { flex: 1; min-width: 0; }
+        .file-name {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            font-size: .88rem;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .file-meta {
+            font-size: .72rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+            display: flex; align-items: center; gap: 8px;
+        }
+
+        .status-dot {
+            display: inline-block;
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status-dot.processing {
+            background: var(--amber);
+            animation: pulse-dot 1.2s ease-in-out infinite;
+        }
+        .status-dot.ready { background: #22c55e; }
+        .status-dot.error { background: var(--red); }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: .4; transform: scale(0.8); }
+        }
+
+        .delete-btn {
+            border: none; background: none; cursor: pointer;
+            color: var(--text-muted);
+            font-size: .92rem;
+            padding: 6px;
+            border-radius: 8px;
+            transition: all .2s;
+        }
+        .delete-btn:hover { color: var(--red); background: #fef2f2; }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+            font-size: .88rem;
+        }
+
+        @media (max-width: 600px) {
+            .page { padding: 32px 16px 48px; }
+            .page-title { font-size: 1.6rem; }
+            .upload-card { padding: 22px 18px 20px; }
+            .kind-row { flex-direction: column; gap: 10px; }
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div class="page">
+    <div class="top-nav">
+        <div class="brand-tag">Protean</div>
+        <a href="/" class="nav-link"><i class="fas fa-arrow-left"></i> Back to tutor</a>
+    </div>
+
+    <h1 class="page-title">Knowledge Base</h1>
+    <p class="page-subtitle">Upload PDFs and PowerPoint decks. Content is pre-processed so tutoring sessions start instantly.</p>
+
+    <div class="upload-card">
+        <div class="form-row">
+            <label for="kbFile">Upload document</label>
+            <div class="file-drop">
+                <input type="file" id="kbFile" accept=".pdf,.pptx">
+                <div class="file-drop-hint">.pdf or .pptx accepted</div>
+            </div>
+        </div>
+
+        <div class="kind-row" id="kindRow">
+            <label class="kind-option selected" id="kindText" onclick="selectKind('text')">
+                <input type="radio" name="kind" value="text" checked>
+                <i class="fas fa-file-lines kind-icon"></i>
+                <div>
+                    <div class="kind-label-text">Text PDF</div>
+                    <div class="kind-desc">Selectable text, normal documents</div>
+                </div>
+            </label>
+            <label class="kind-option" id="kindImage" onclick="selectKind('image')">
+                <input type="radio" name="kind" value="image">
+                <i class="fas fa-image kind-icon"></i>
+                <div>
+                    <div class="kind-label-text">Image PDF</div>
+                    <div class="kind-desc">Scanned pages, diagrams, illustrations</div>
+                </div>
+            </label>
+        </div>
+
+        <button class="primary-btn" id="uploadBtn" disabled>
+            <i class="fas fa-cloud-upload-alt"></i> Upload to Knowledge Base
+        </button>
+        <div class="status-bar" id="status"></div>
+    </div>
+
+    <div class="section-label">Uploaded files</div>
+    <div class="file-list" id="fileList">
+        <div class="empty-state" id="emptyState">No files uploaded yet. Upload your first document above.</div>
+    </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+
+let selectedKind = 'text';
+let pollTimer = null;
+
+function selectKind(kind) {
+    selectedKind = kind;
+    $('kindText').classList.toggle('selected', kind === 'text');
+    $('kindImage').classList.toggle('selected', kind === 'image');
+}
+
+function showStatus(msg, type) {
+    const el = $('status');
+    el.textContent = msg;
+    el.className = 'status-bar ' + type;
+}
+function hideStatus() { $('status').className = 'status-bar'; }
+
+$('kbFile').addEventListener('change', () => {
+    const file = $('kbFile').files[0];
+    if (!file) { $('uploadBtn').disabled = true; return; }
+    const name = (file.name || '').toLowerCase();
+    const isPdf = name.endsWith('.pdf');
+    const isPpt = name.endsWith('.pptx');
+    if (!isPdf && !isPpt) {
+        showStatus('Only .pdf and .pptx files are accepted.', 'error');
+        $('uploadBtn').disabled = true;
+        return;
+    }
+    hideStatus();
+    $('kindRow').classList.toggle('visible', isPdf);
+    if (!isPdf) selectedKind = '';
+    $('uploadBtn').disabled = false;
+});
+
+$('uploadBtn').addEventListener('click', async () => {
+    const file = $('kbFile').files[0];
+    if (!file) return;
+
+    const btn = $('uploadBtn');
+    btn.disabled = true;
+    btn.textContent = 'Uploading…';
+    hideStatus();
+
+    const fd = new FormData();
+    fd.append('file', file);
+    const name = (file.name || '').toLowerCase();
+    if (name.endsWith('.pdf')) {
+        fd.append('kind', selectedKind || 'text');
+    }
+
+    try {
+        const res = await fetch('/api/kb/upload', { method: 'POST', body: fd });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: res.statusText }));
+            throw new Error(err.detail || res.statusText);
+        }
+        showStatus('Upload started — processing in background.', 'info');
+        $('kbFile').value = '';
+        $('kindRow').classList.remove('visible');
+        await refreshFileList();
+        startPolling();
+    } catch (e) {
+        showStatus(e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> Upload to Knowledge Base';
+    }
+});
+
+async function refreshFileList() {
+    try {
+        const res = await fetch('/api/kb/files');
+        const files = await res.json();
+        renderFileList(files);
+        return files;
+    } catch {
+        return [];
+    }
+}
+
+function renderFileList(files) {
+    const list = $('fileList');
+    const empty = $('emptyState');
+
+    if (!files.length) {
+        list.innerHTML = '';
+        list.appendChild(empty);
+        empty.style.display = 'block';
+        return;
+    }
+
+    empty.style.display = 'none';
+    const sorted = [...files].sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+
+    list.innerHTML = sorted.map(f => {
+        const isPpt = f.type === 'ppt';
+        const iconClass = isPpt ? 'ppt' : 'pdf';
+        const icon = isPpt ? 'fa-file-powerpoint' : 'fa-file-pdf';
+        const kindLabel = f.kind ? ` · ${f.kind}` : '';
+        const statusClass = f.status || 'processing';
+        const statusLabel = f.status === 'ready' ? 'Ready'
+            : f.status === 'error' ? 'Error'
+            : 'Processing…';
+        const date = f.created_at ? new Date(f.created_at).toLocaleDateString() : '';
+
+        return `
+            <div class="file-entry" data-id="${f.id}">
+                <div class="file-icon ${iconClass}"><i class="fas ${icon}"></i></div>
+                <div class="file-info">
+                    <div class="file-name" title="${f.name || ''}">${f.name || 'Untitled'}</div>
+                    <div class="file-meta">
+                        <span class="status-dot ${statusClass}"></span>
+                        ${statusLabel}${kindLabel} · ${date}
+                    </div>
+                </div>
+                <button class="delete-btn" onclick="deleteFile('${f.id}')" title="Delete">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+async function deleteFile(fileId) {
+    if (!confirm('Delete this file from the knowledge base?')) return;
+    try {
+        await fetch(`/api/kb/files/${fileId}`, { method: 'DELETE' });
+        await refreshFileList();
+    } catch {}
+}
+
+function startPolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(async () => {
+        const files = await refreshFileList();
+        const hasProcessing = files.some(f => f.status === 'processing');
+        if (!hasProcessing) {
+            clearInterval(pollTimer);
+            pollTimer = null;
+        }
+    }, 3000);
+}
+
+(async () => {
+    const files = await refreshFileList();
+    if (files.some(f => f.status === 'processing')) startPolling();
+})();
+</script>
+</body>
+</html>

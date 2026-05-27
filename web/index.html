@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protean — Voice Agent</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-deep: #f4f6fb;
+            --bg-surface: #ffffff;
+            --bg-card: rgba(255, 255, 255, 0.88);
+            --border-subtle: rgba(8, 145, 178, 0.1);
+            --border-glow: rgba(8, 145, 178, 0.25);
+            --cyan: #0891b2;
+            --cyan-dim: #0e7490;
+            --cyan-glow: rgba(8, 145, 178, 0.2);
+            --teal: #0d9488;
+            --amber: #d97706;
+            --amber-glow: rgba(217, 119, 6, 0.18);
+            --red: #dc2626;
+            --red-glow: rgba(220, 38, 38, 0.15);
+            --text-primary: #1a2035;
+            --text-secondary: #52607a;
+            --text-muted: #94a3b8;
+            --glass: rgba(255, 255, 255, 0.75);
+            --glass-border: rgba(0, 0, 0, 0.07);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', system-ui, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: 0;
+            background:
+                linear-gradient(rgba(8, 145, 178, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(8, 145, 178, 0.03) 1px, transparent 1px);
+            background-size: 64px 64px;
+            mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 30%, transparent 100%);
+            pointer-events: none;
+        }
+        body::after {
+            content: '';
+            position: fixed; inset: 0; z-index: 0;
+            background: radial-gradient(ellipse 60% 50% at 50% 15%, rgba(8, 145, 178, 0.04), transparent 70%);
+            pointer-events: none;
+        }
+
+        /* ── sphere containers ── */
+        .sphere-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sphere-wrap.hero {
+            width: min(82vw, 340px);
+            height: min(82vw, 340px);
+            margin: 0 auto 20px;
+        }
+        .sphere-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: transparent;
+        }
+
+        .sphere-call-wrap {
+            position: relative;
+            width: min(52vw, 210px);
+            height: min(52vw, 210px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sphere-caption {
+            position: absolute;
+            bottom: -26px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Outfit', sans-serif;
+            font-size: .65rem;
+            font-weight: 600;
+            letter-spacing: .2em;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            white-space: nowrap;
+            transition: color .3s;
+        }
+        .sphere-caption.speaking { color: var(--cyan); }
+
+        /* ── setup page ── */
+        .setup-page {
+            position: relative; z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+        }
+
+        .brand-tag {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: .72rem;
+            letter-spacing: .32em;
+            text-transform: uppercase;
+            color: var(--cyan);
+            margin-bottom: 32px;
+        }
+
+        .setup-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 2.4rem;
+            letter-spacing: -.02em;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            text-align: center;
+        }
+        .setup-subtitle {
+            font-size: .92rem;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            text-align: center;
+            max-width: 440px;
+            line-height: 1.55;
+        }
+
+        /* glass card */
+        .glass-card {
+            position: relative;
+            background: var(--bg-card);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            padding: 28px 28px 24px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow:
+                0 8px 32px rgba(0, 40, 80, 0.06),
+                0 1px 3px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+        }
+        .glass-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 2px;
+            background: linear-gradient(90deg, transparent 10%, var(--cyan) 50%, transparent 90%);
+            opacity: .45;
+        }
+
+        /* form */
+        .form-group { margin-bottom: 14px; text-align: left; }
+        .form-group label {
+            display: block;
+            font-family: 'Outfit', sans-serif;
+            font-size: .78rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .file-drop {
+            border: 1.5px dashed rgba(8, 145, 178, 0.22);
+            border-radius: 14px;
+            padding: 20px 16px;
+            text-align: center;
+            transition: border-color .25s, background .25s;
+            cursor: pointer;
+            background: rgba(8, 145, 178, 0.02);
+        }
+        .file-drop:hover {
+            border-color: rgba(8, 145, 178, 0.4);
+            background: rgba(8, 145, 178, 0.04);
+        }
+        .file-drop input[type="file"] {
+            font-family: 'DM Sans', sans-serif;
+            font-size: .85rem;
+            color: var(--text-secondary);
+        }
+        .file-drop-hint {
+            font-size: .78rem;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: .88rem;
+            font-family: 'DM Sans', sans-serif;
+            background: #f8f9fc;
+            color: var(--text-primary);
+            transition: border-color .2s;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: var(--cyan);
+            box-shadow: 0 0 0 3px rgba(8, 145, 178, 0.08);
+        }
+
+        .chapter-row { margin-top: 10px; text-align: left; }
+        .chapter-row label {
+            display: block;
+            font-family: 'Outfit', sans-serif;
+            font-size: .78rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            letter-spacing: .04em;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+        .chapter-row select {
+            width: 100%;
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: .85rem;
+            font-family: 'DM Sans', sans-serif;
+            background: #f8f9fc;
+            color: var(--text-primary);
+        }
+
+        .primary-btn {
+            width: 100%; padding: 13px 20px; border: none; border-radius: 12px;
+            background: linear-gradient(135deg, var(--cyan) 0%, var(--cyan-dim) 100%);
+            color: #fff; font-family: 'Outfit', sans-serif;
+            font-size: .95rem; font-weight: 700; cursor: pointer;
+            margin-top: 10px;
+            transition: box-shadow .25s, transform .2s;
+            letter-spacing: .01em;
+        }
+        .primary-btn:hover {
+            box-shadow: 0 6px 24px var(--cyan-glow);
+            transform: translateY(-1px);
+        }
+        .primary-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        .status-bar {
+            margin-top: 12px; padding: 10px 14px; border-radius: 10px;
+            font-size: .82rem; display: none; line-height: 1.45;
+        }
+        .status-bar.error {
+            display: block;
+            background: #fef2f2;
+            color: #b91c1c;
+            border: 1px solid #fecaca;
+        }
+        .status-bar.info {
+            display: block;
+            background: #ecfeff;
+            color: var(--cyan-dim);
+            border: 1px solid #a5f3fc;
+        }
+
+        .extracted-box {
+            margin-top: 12px;
+            border: 1px solid rgba(0,0,0,0.06);
+            border-radius: 12px;
+            background: #f8f9fc;
+            padding: 12px;
+            display: none;
+        }
+        .extracted-box.active { display: block; }
+        .extracted-box label {
+            display: flex; align-items: center; gap: 8px;
+            font-size: .76rem; font-weight: 600;
+            color: var(--text-secondary); margin-bottom: 8px;
+        }
+        .dev-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .62rem; font-weight: 600;
+            text-transform: uppercase; letter-spacing: .08em;
+            background: #fef3c7;
+            color: #92400e;
+            border: 1px solid #fcd34d;
+            padding: 2px 8px; border-radius: 6px;
+        }
+        .extracted-text {
+            width: 100%; min-height: 140px; max-height: 220px;
+            overflow: auto; resize: vertical;
+            border: 1px solid rgba(0,0,0,0.08);
+            border-radius: 8px; padding: 10px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .78rem; line-height: 1.55;
+            color: var(--text-secondary);
+            background: #fff;
+            white-space: pre-wrap;
+        }
+
+        /* ── call overlay ── */
+        .call-overlay {
+            position: fixed; inset: 0; z-index: 1000;
+            background: var(--bg-deep);
+            display: none;
+            flex-direction: column;
+        }
+        .call-overlay::before {
+            content: '';
+            position: absolute; inset: 0;
+            background:
+                linear-gradient(rgba(8, 145, 178, 0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(8, 145, 178, 0.025) 1px, transparent 1px);
+            background-size: 64px 64px;
+            mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, black 20%, transparent 100%);
+            pointer-events: none;
+        }
+        .call-overlay.active { display: flex; }
+
+        .call-card {
+            position: relative; z-index: 1;
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center;
+            padding: 20px 24px;
+            gap: 16px;
+            overflow-y: auto;
+        }
+
+        /* call top bar */
+        .call-topbar {
+            width: 100%; max-width: 680px;
+            display: flex; align-items: center; gap: 16px;
+            padding: 0 0 8px;
+            border-bottom: 1px solid rgba(0,0,0,0.06);
+        }
+        .call-topbar .session-info {
+            flex: 1;
+            font-family: 'Outfit', sans-serif;
+            font-size: .82rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            letter-spacing: .02em;
+        }
+        .call-topbar .timer-mono {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .88rem;
+            font-weight: 500;
+            color: var(--cyan);
+            letter-spacing: .04em;
+        }
+
+        /* timer area (hidden — sphere replaces it, DOM stays for JS) */
+        .timer-area { display: none; }
+        .timer-svg { position: absolute; width: 130px; height: 130px; }
+        .timer-text { position: relative; text-align: center; }
+        .timer-time {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.8rem; font-weight: 500; color: var(--text-primary);
+        }
+        .timer-label {
+            font-family: 'Outfit', sans-serif;
+            font-size: .58rem; font-weight: 600; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: .14em; margin-top: 2px;
+        }
+
+        /* PPT bottom-bar sphere (replaces waveform) */
+        .ppt-sphere-wrap {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 64px;
+        }
+        .ppt-sphere-wrap .sphere-canvas {
+            width: 64px;
+            height: 64px;
+        }
+
+        .hint-box {
+            width: 100%; max-width: 520px;
+            border: 1px solid #bae6fd;
+            background: #f0f9ff;
+            color: var(--text-secondary);
+            border-radius: 10px; padding: 10px 14px;
+            font-size: .78rem; line-height: 1.5; text-align: center;
+        }
+        .hint-box b { color: var(--cyan-dim); font-weight: 600; }
+
+        /* segment box (PDF mode) */
+        .segment-box {
+            width: 100%; max-width: 600px;
+            border: 1px solid rgba(0,0,0,0.06);
+            background: #fff;
+            border-radius: 14px; padding: 16px 18px;
+            text-align: left;
+            box-shadow: 0 2px 8px rgba(0, 30, 60, 0.04);
+        }
+        .segment-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: .76rem; font-weight: 600;
+            color: var(--text-secondary); margin-bottom: 8px;
+            display: flex; align-items: center;
+            justify-content: space-between; gap: 10px;
+            text-transform: uppercase; letter-spacing: .04em;
+        }
+        .segment-meta {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .68rem; font-weight: 500;
+            color: var(--text-muted); white-space: nowrap;
+            text-transform: none; letter-spacing: .02em;
+        }
+        .segment-text {
+            font-size: .88rem; line-height: 1.6;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            max-height: 200px; overflow: auto;
+        }
+
+        /* controls */
+        .call-controls {
+            display: flex; align-items: center; justify-content: center; gap: 14px;
+        }
+        .ctrl-btn {
+            border: none; cursor: pointer;
+            transition: all .2s; font-family: inherit; outline: none;
+        }
+        .mute-btn {
+            width: 54px; height: 54px; border-radius: 14px;
+            background: #fff;
+            border: 1.5px solid rgba(0,0,0,0.1);
+            display: flex; align-items: center; justify-content: center;
+            transition: all .2s;
+            box-shadow: 0 2px 6px rgba(0,20,40,0.04);
+        }
+        .mute-btn i { font-size: 1.2rem; color: var(--cyan); }
+        .mute-btn:hover { border-color: var(--cyan); background: #ecfeff; }
+        .mute-btn.muted {
+            background: #fef2f2;
+            border-color: #fca5a5;
+        }
+        .mute-btn.muted i { color: var(--red); }
+
+        .end-btn {
+            background: #fef2f2;
+            border: 1.5px solid #fca5a5;
+            color: var(--red); border-radius: 12px; padding: 12px 22px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600; font-size: .88rem;
+            display: flex; align-items: center; gap: 8px;
+            transition: all .2s;
+        }
+        .end-btn:hover {
+            background: #fee2e2;
+            border-color: #f87171;
+            box-shadow: 0 4px 16px var(--red-glow);
+        }
+
+        .session-info {
+            font-size: .78rem; color: var(--text-muted);
+            text-align: center; line-height: 1.5;
+        }
+
+        .chapter-row.call-chapter { width: 100%; max-width: 420px; }
+        .chapter-row.call-chapter select { font-size: .8rem; padding: 8px 12px; }
+
+        /* ── PPT mode ── */
+        .call-card.ppt-mode { padding: 12px 16px; gap: 10px; }
+
+        .ppt-topbar {
+            display: none; width: 100%;
+            align-items: center; justify-content: space-between;
+            gap: 12px; flex: 0 0 auto;
+        }
+        .call-card.ppt-mode .ppt-topbar { display: flex; }
+        .ppt-topbar .session-info {
+            flex: 1;
+            text-align: left; color: var(--text-secondary);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 500; font-size: .8rem;
+        }
+        .ppt-topbar .slide-counter {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .78rem; font-weight: 500;
+            color: var(--cyan-dim);
+            background: #ecfeff;
+            padding: 5px 14px; border-radius: 999px;
+            border: 1px solid #a5f3fc;
+        }
+
+        .slide-stage {
+            display: none; flex: 1 1 auto; width: 100%; min-height: 0;
+            align-items: center; justify-content: center;
+            background: #f0f1f5;
+            border-radius: 14px; overflow: hidden; position: relative;
+            border: 1px solid rgba(0,0,0,0.06);
+        }
+        .call-card.ppt-mode .slide-stage { display: flex; }
+        .slide-stage img {
+            display: block; width: 100%; height: 100%;
+            max-width: 100%; max-height: 100%; object-fit: contain;
+        }
+        .slide-stage .slide-placeholder {
+            color: var(--text-muted); font-size: .85rem; letter-spacing: .03em;
+        }
+
+        .ppt-bottombar {
+            display: none; width: 100%;
+            align-items: center; gap: 14px; flex: 0 0 auto;
+            padding: 6px 0 0;
+        }
+        .call-card.ppt-mode .ppt-bottombar { display: flex; }
+
+        .ppt-bottombar .timer-area-compact {
+            display: flex; flex-direction: column; align-items: center; gap: 0;
+            padding: 5px 14px; border-radius: 10px;
+            background: #ecfeff;
+            border: 1px solid #a5f3fc;
+            min-width: 72px;
+        }
+        .ppt-bottombar .timer-time-compact {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .95rem; font-weight: 500; color: var(--text-primary);
+        }
+        .ppt-bottombar .timer-label-compact {
+            font-family: 'Outfit', sans-serif;
+            font-size: .52rem; font-weight: 600; color: var(--cyan);
+            text-transform: uppercase; letter-spacing: .14em;
+        }
+        /* PPT hides PDF-only stuff */
+        .call-card.ppt-mode .call-topbar,
+        .call-card.ppt-mode .sphere-call-wrap,
+        .call-card.ppt-mode > .session-info,
+        .call-card.ppt-mode > .chapter-row,
+        .call-card.ppt-mode > .call-controls,
+        .call-card.ppt-mode .segment-box,
+        .call-card.ppt-mode .hint-box { display: none !important; }
+
+        .slide-panel { display: none; }
+        .slide-view  { display: none; }
+        .segment-text.ppt-notes { display: none; }
+
+        /* ── responsive ── */
+        @media (max-width: 700px) {
+            .sphere-wrap.hero { width: min(72vw, 260px); height: min(72vw, 260px); }
+            .sphere-call-wrap { width: min(48vw, 170px); height: min(48vw, 170px); }
+            .setup-title { font-size: 1.8rem; }
+            .glass-card { padding: 22px 18px 20px; }
+            .call-card { padding: 16px 14px; gap: 12px; }
+            .mute-btn   { width: 48px; height: 48px; }
+            .end-btn    { padding: 10px 18px; font-size: .85rem; }
+            .call-card.ppt-mode { padding: 8px 10px; gap: 8px; }
+            .ppt-bottombar { flex-wrap: wrap; gap: 10px; }
+            .ppt-sphere-wrap { order: 2; }
+            .ppt-sphere-wrap .sphere-canvas { width: 52px; height: 52px; }
+        }
+
+        @media (max-height: 760px) {
+            .call-card { padding: 14px 16px; gap: 12px; }
+            .segment-text { max-height: 120px; }
+            .sphere-call-wrap { width: min(40vw, 160px); height: min(40vw, 160px); }
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.18); }
+    </style>
+</head>
+<body>
+
+<!-- ── setup page ── -->
+<div class="setup-page" id="setupCard">
+    <div class="brand-tag">Protean</div>
+
+    <div class="sphere-wrap hero">
+        <canvas id="sphereHeroCanvas" class="sphere-canvas" aria-hidden="true"></canvas>
+    </div>
+
+    <h1 class="setup-title">Voice Agent</h1>
+    <p class="setup-subtitle">Select a document from the knowledge base, then start a live voice tutoring session powered by Gemini.</p>
+
+    <div class="glass-card">
+        <div class="form-group" style="margin-bottom:0">
+            <label for="kbFileSelect">Select document</label>
+            <select id="kbFileSelect" style="width:100%;border:1px solid rgba(0,0,0,0.1);border-radius:10px;padding:10px 14px;font-size:.88rem;font-family:'DM Sans',sans-serif;background:#f8f9fc;color:var(--text-primary);">
+                <option value="">Loading knowledge base…</option>
+            </select>
+        </div>
+
+        <div class="chapter-row" id="setupChapterRow" style="display:none">
+            <label for="setupChapterSelect">Chapter</label>
+            <select id="setupChapterSelect"></select>
+        </div>
+
+        <button class="primary-btn" id="teachBtn" disabled>Start teaching</button>
+        <div class="status-bar" id="status"></div>
+        <div class="extracted-box" id="extractedBox" aria-hidden="true">
+            <label for="extractedText"><span class="dev-badge">Dev</span> Extracted text</label>
+            <textarea id="extractedText" class="extracted-text" readonly spellcheck="false" autocomplete="off"></textarea>
+        </div>
+
+        <a href="/kb" style="display:block;text-align:center;margin-top:14px;font-family:'Outfit',sans-serif;font-size:.82rem;font-weight:600;color:var(--cyan-dim);text-decoration:none;transition:color .2s;">
+            <i class="fas fa-plus" style="margin-right:4px"></i> Manage Knowledge Base
+        </a>
+    </div>
+</div>
+
+<!-- ── call overlay ── -->
+<div class="call-overlay" id="callOverlay">
+    <div class="call-card" id="callCard">
+
+        <!-- PPT top bar -->
+        <div class="ppt-topbar">
+            <div class="session-info" id="sessionInfoPpt"></div>
+            <div class="slide-counter" id="slideCounter">Slide 1</div>
+        </div>
+
+        <!-- PPT slide stage -->
+        <div class="slide-stage" id="slideStage">
+            <div class="slide-placeholder" id="slidePlaceholder">Waiting for the first slide…</div>
+            <img id="slideImg" alt="Current slide" style="display:none" />
+        </div>
+
+        <!-- PDF mode: top bar -->
+        <div class="call-topbar">
+            <div class="session-info" id="sessionInfo"></div>
+            <div class="timer-mono" id="timerDisplayTop">0:00</div>
+        </div>
+
+        <!-- PDF mode: audio-reactive sphere (replaces timer ring + waveform) -->
+        <div class="sphere-call-wrap">
+            <canvas id="sphereCallCanvas" class="sphere-canvas" aria-hidden="true"></canvas>
+            <div class="sphere-caption" id="sphereCallCaption">Listening…</div>
+        </div>
+
+        <div class="chapter-row call-chapter" id="callChapterRow" style="display:none">
+            <label for="callChapterSelect">Jump to chapter</label>
+            <select id="callChapterSelect"></select>
+        </div>
+
+        <!-- timer area kept in DOM for JS but hidden by CSS -->
+        <div class="timer-area">
+            <svg class="timer-svg" viewBox="0 0 120 120">
+                <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(0,212,255,.1)" stroke-width="4"/>
+                <circle id="timerRing" cx="60" cy="60" r="54" fill="none" stroke="url(#tg)" stroke-width="4"
+                        stroke-linecap="round" stroke-dasharray="339.292" stroke-dashoffset="0"
+                        style="transform:rotate(-90deg);transform-origin:60px 60px"/>
+                <defs><linearGradient id="tg" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#0891b2" stop-opacity=".8"/>
+                    <stop offset="100%" stop-color="#00d4ff" stop-opacity=".8"/>
+                </linearGradient></defs>
+            </svg>
+            <div class="timer-text">
+                <div class="timer-time" id="timerDisplay">0:00</div>
+                <div class="timer-label">session time</div>
+            </div>
+        </div>
+
+        <div class="hint-box" id="voiceHint">
+            Say <b>"next segment"</b> / <b>"previous segment"</b>, or pick a chapter below. Say <b>"go to chapter 3"</b> by voice.
+        </div>
+
+        <!-- PDF: segment panel -->
+        <div class="segment-box">
+            <div class="segment-title">
+                <span id="segmentBoxLabel">Current excerpt</span>
+                <span class="segment-meta" id="segmentMeta">—</span>
+            </div>
+            <div class="segment-text" id="segmentText">Waiting for the tutor…</div>
+        </div>
+
+        <!-- PPT bottom bar -->
+        <div class="ppt-bottombar">
+            <div class="timer-area-compact">
+                <div class="timer-time-compact" id="timerDisplayPpt">0:00</div>
+                <div class="timer-label-compact">session</div>
+            </div>
+            <div class="ppt-sphere-wrap">
+                <canvas id="spherePptCanvas" class="sphere-canvas" aria-hidden="true"></canvas>
+            </div>
+            <div class="call-controls">
+                <button class="ctrl-btn mute-btn" id="muteBtnPpt"><i id="muteIconPpt" class="fas fa-microphone"></i></button>
+                <button class="ctrl-btn end-btn" id="endBtnPpt"><i class="fas fa-phone-slash"></i> <span>End</span></button>
+            </div>
+        </div>
+
+        <!-- PDF controls -->
+        <div class="call-controls">
+            <button class="ctrl-btn mute-btn" id="muteBtn"><i id="muteIcon" class="fas fa-microphone"></i></button>
+            <button class="ctrl-btn end-btn" id="endBtn"><i class="fas fa-phone-slash"></i> <span>End</span></button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+const $ = id => document.getElementById(id);
+
+const OUTPUT_SAMPLE_RATE = 24000;
+
+let liveWs = null;
+let timerHandle = null;
+let muted = false;
+let startTime = 0;
+let extractedSession = null;
+let sessionSegments = [];
+let lastSegmentRev = -1;
+let chapterList = [];
+let chapterSegmentsMap = new Map();
+let currentSessionId = '';
+let liveChapterOptions = [];
+let suppressChapterChange = false;
+let contentType = 'pdf';
+let kbFiles = [];
+let selectedKbFileId = '';
+
+// ── 3D sphere (Fibonacci dot distribution) ──
+
+function generateSpherePoints(count) {
+    const pts = new Array(count);
+    const phi = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < count; i++) {
+        const y = 1 - (i / (count - 1)) * 2;
+        const radius = Math.sqrt(1 - y * y);
+        const theta = phi * i;
+        pts[i] = { x: Math.cos(theta) * radius, y, z: Math.sin(theta) * radius };
+    }
+    return pts;
+}
+
+const isMobile = () => window.innerWidth <= 600;
+const POINTS_HERO = generateSpherePoints(isMobile() ? 480 : 720);
+const POINTS_CALL = generateSpherePoints(isMobile() ? 320 : 420);
+const POINTS_MINI = generateSpherePoints(isMobile() ? 120 : 160);
+
+function sizeCanvas(canvas) {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = canvas.getBoundingClientRect();
+    canvas.width  = Math.max(1, Math.floor(rect.width  * dpr));
+    canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+    canvas._dpr = dpr;
+}
+
+function renderSphere(canvas, ctx, points, rotation, audioLevel) {
+    const dpr = canvas._dpr || 1;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
+
+    const cx = w / 2;
+    const cy = h / 2;
+    const baseR = Math.min(w, h) * 0.34;
+    const breath = (Math.sin(Date.now() * 0.0014) + 1) * 0.5 * 0.025;
+    const r = baseR * (1 + breath + audioLevel * 0.32);
+    const dotScale = Math.max(0.4, Math.min(1, Math.min(w, h) / (340 * dpr)));
+
+    const halo = ctx.createRadialGradient(cx, cy, r * 0.6, cx, cy, r * 1.55);
+    halo.addColorStop(0, `rgba(8, 145, 178, ${0.06 + audioLevel * 0.12})`);
+    halo.addColorStop(1, 'rgba(8, 145, 178, 0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 1.55, 0, Math.PI * 2);
+    ctx.fill();
+
+    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, r * 0.55);
+    core.addColorStop(0, `rgba(6, 182, 212, ${0.12 + audioLevel * 0.2})`);
+    core.addColorStop(0.5, `rgba(8, 145, 178, ${0.05 + audioLevel * 0.1})`);
+    core.addColorStop(1, 'rgba(8, 145, 178, 0)');
+    ctx.fillStyle = core;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+
+    const cosY = Math.cos(rotation);
+    const sinY = Math.sin(rotation);
+    const tiltX = Math.PI / 11;
+    const cosX = Math.cos(tiltX);
+    const sinX = Math.sin(tiltX);
+
+    const projected = [];
+    for (let i = 0; i < points.length; i++) {
+        const p = points[i];
+        const x1 = p.x * cosY - p.z * sinY;
+        const z1 = p.x * sinY + p.z * cosY;
+        const y2 = p.y * cosX - z1 * sinX;
+        const z2 = p.y * sinX + z1 * cosX;
+        const persp = 1.55 / (1.55 + z2);
+        projected.push({ x: cx + x1 * r * persp, y: cy + y2 * r * persp, z: z2, persp });
+    }
+    projected.sort((a, b) => a.z - b.z);
+
+    for (const p of projected) {
+        const depth = (p.z + 1) * 0.5;
+        const size = (0.9 + p.persp * 1.3) * dpr * dotScale * (0.85 + audioLevel * 0.55);
+        const alpha = 0.18 + depth * 0.82;
+
+        if (depth > 0.55) {
+            ctx.fillStyle = `rgba(6, 182, 212, ${alpha})`;
+        } else if (depth > 0.3) {
+            ctx.fillStyle = `rgba(14, 116, 144, ${alpha * 0.85})`;
+        } else {
+            ctx.fillStyle = `rgba(148, 180, 200, ${alpha * 0.4})`;
+        }
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+// ── hero sphere (landing page — idle breathing) ──
+
+const heroState = { rotation: 0, animFrame: null, resizeHandler: null };
+
+function startHeroSphere() {
+    const canvas = $('sphereHeroCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    sizeCanvas(canvas);
+    heroState.resizeHandler = () => sizeCanvas(canvas);
+    window.addEventListener('resize', heroState.resizeHandler);
+
+    function frame() {
+        heroState.rotation += 0.003;
+        renderSphere(canvas, ctx, POINTS_HERO, heroState.rotation, 0);
+        heroState.animFrame = requestAnimationFrame(frame);
+    }
+    heroState.animFrame = requestAnimationFrame(frame);
+}
+
+function stopHeroSphere() {
+    if (heroState.animFrame) { cancelAnimationFrame(heroState.animFrame); heroState.animFrame = null; }
+    if (heroState.resizeHandler) { window.removeEventListener('resize', heroState.resizeHandler); heroState.resizeHandler = null; }
+}
+
+// ── call sphere (audio-reactive) ──
+
+const callSphereState = { rotation: 0, audioLevel: 0, animFrame: null, resizeHandler: null };
+
+function readOutputAudioLevel() {
+    const analyser = geminiState.outputAnalyser;
+    const buf = geminiState.outputAnalyserBuf;
+    if (!analyser || !buf) return 0;
+    analyser.getByteTimeDomainData(buf);
+    let sum = 0;
+    for (let i = 0; i < buf.length; i++) {
+        const v = (buf[i] - 128) / 128;
+        sum += v * v;
+    }
+    return Math.max(0, Math.min(1, Math.sqrt(sum / buf.length) * 3.2));
+}
+
+function startCallSphere() {
+    const canvasPdf = $('sphereCallCanvas');
+    const canvasPpt = $('spherePptCanvas');
+    const captionEl = $('sphereCallCaption');
+
+    const targets = [];
+    function setupAll() {
+        targets.length = 0;
+        for (const [c, pts] of [[canvasPdf, POINTS_CALL], [canvasPpt, POINTS_MINI]]) {
+            if (!c) continue;
+            const ctx = c.getContext('2d');
+            if (!ctx) continue;
+            sizeCanvas(c);
+            targets.push({ canvas: c, ctx, points: pts });
+        }
+    }
+    setupAll();
+    callSphereState.resizeHandler = setupAll;
+    window.addEventListener('resize', callSphereState.resizeHandler);
+
+    function frame() {
+        const target = readOutputAudioLevel();
+        callSphereState.audioLevel = callSphereState.audioLevel * 0.78 + target * 0.22;
+        callSphereState.rotation += 0.0035 + callSphereState.audioLevel * 0.012;
+
+        if (captionEl) {
+            if (callSphereState.audioLevel > 0.06) {
+                captionEl.textContent = 'Tutor is speaking';
+                captionEl.classList.add('speaking');
+            } else {
+                captionEl.textContent = 'Listening\u2026';
+                captionEl.classList.remove('speaking');
+            }
+        }
+
+        for (const { canvas, ctx, points } of targets) {
+            renderSphere(canvas, ctx, points, callSphereState.rotation, callSphereState.audioLevel);
+        }
+        callSphereState.animFrame = requestAnimationFrame(frame);
+    }
+    callSphereState.animFrame = requestAnimationFrame(frame);
+}
+
+function stopCallSphere() {
+    if (callSphereState.animFrame) { cancelAnimationFrame(callSphereState.animFrame); callSphereState.animFrame = null; }
+    if (callSphereState.resizeHandler) { window.removeEventListener('resize', callSphereState.resizeHandler); callSphereState.resizeHandler = null; }
+    callSphereState.audioLevel = 0;
+}
+
+// ── start hero sphere on load ──
+startHeroSphere();
+
+// ── chapter helpers ──
+
+function formatChapterLabel(ch) {
+    const title = ch.title || `Chapter ${Number(ch.index) + 1}`;
+    const pages = (ch.start_page != null && ch.end_page != null)
+        ? ` (pp. ${ch.start_page}\u2013${ch.end_page})`
+        : '';
+    return `${title}${pages}`;
+}
+
+function populateChapterSelect(selectEl, chapters, selectedIndex) {
+    if (!selectEl) return;
+    selectEl.innerHTML = '';
+    for (const ch of chapters) {
+        const opt = document.createElement('option');
+        opt.value = String(ch.index);
+        opt.textContent = formatChapterLabel(ch);
+        if (Number(ch.index) === Number(selectedIndex)) opt.selected = true;
+        selectEl.appendChild(opt);
+    }
+}
+
+function refreshChapterPickers(selectedIndex = -1) {
+    const show = liveChapterOptions.length > 1;
+    const setupRow = $('setupChapterRow');
+    const callRow = $('callChapterRow');
+    if (setupRow) setupRow.style.display = show ? 'block' : 'none';
+    if (callRow) callRow.style.display = show && liveWs ? 'block' : 'none';
+    const idx = Number.isInteger(selectedIndex) ? selectedIndex : (
+        Number.isInteger(extractedSession?.selected_chapter_index)
+            ? extractedSession.selected_chapter_index
+            : (liveChapterOptions[0]?.index ?? -1)
+    );
+    populateChapterSelect($('setupChapterSelect'), liveChapterOptions, idx);
+    populateChapterSelect($('callChapterSelect'), liveChapterOptions, idx);
+}
+
+function jumpToChapterFromUi(chapterIndex, source) {
+    const idx = Number(chapterIndex);
+    if (!Number.isInteger(idx) || idx < 0) return;
+    if (liveWs && liveWs.readyState === WebSocket.OPEN) {
+        wsSend({ type: 'jump_chapter', chapter_index: idx });
+        return;
+    }
+    extractedSession = extractedSession || {};
+    extractedSession.selected_chapter_index = idx;
+    if (chapterSegmentsMap.has(idx)) {
+        sessionSegments = chapterSegmentsMap.get(idx) || sessionSegments;
+        const chapter = chapterList[idx];
+        if (chapter) {
+            const text = isPptSession()
+                ? `${chapter.title} \u00b7 ${sessionSegments.length} slides`
+                : `${chapter.title} \u00b7 ${sessionSegments.length} segments \u00b7 pages ${chapter.start_page}-${chapter.end_page}`;
+            setSessionInfoText(text);
+        }
+        showSegment(0);
+    }
+}
+
+function isPptSession() { return contentType === 'ppt'; }
+
+function applyContentTypeUi() {
+    const ppt = isPptSession();
+    $('segmentBoxLabel').textContent = ppt ? 'Current slide' : 'Current excerpt';
+    const card = $('callCard');
+    if (card) card.classList.toggle('ppt-mode', ppt);
+    $('setupChapterRow').style.display = ppt ? 'none' : ($('setupChapterRow').style.display || 'none');
+    $('voiceHint').innerHTML = ppt
+        ? 'Say <b>\u201cnext segment\u201d</b> / <b>\u201cprevious segment\u201d</b> to move between slides.'
+        : 'Say <b>\u201cnext segment\u201d</b> / <b>\u201cprevious segment\u201d</b>, or pick a chapter below. Say <b>\u201cgo to chapter 3\u201d</b> by voice.';
+}
+
+async function loadKbFiles() {
+    try {
+        const res = await fetch('/api/kb/files');
+        kbFiles = await res.json();
+        const select = $('kbFileSelect');
+        const ready = kbFiles.filter(f => f.status === 'ready');
+        if (!ready.length) {
+            select.innerHTML = '<option value="">No files available — upload via Knowledge Base</option>';
+            $('teachBtn').disabled = true;
+            return;
+        }
+        select.innerHTML = '<option value="">Choose a document…</option>' +
+            ready.map(f => {
+                const kind = f.kind ? ` (${f.kind})` : '';
+                const typeLabel = f.type === 'ppt' ? 'PPT' : 'PDF';
+                return `<option value="${f.id}">${f.name || 'Untitled'} — ${typeLabel}${kind}</option>`;
+            }).join('');
+    } catch {
+        $('kbFileSelect').innerHTML = '<option value="">Failed to load knowledge base</option>';
+    }
+}
+
+async function createSessionFromKb(fileId) {
+    hideStatus();
+    $('teachBtn').disabled = true;
+    extractedSession = null;
+    contentType = 'pdf';
+    $('extractedBox').classList.remove('active');
+    $('extractedText').value = '';
+    $('extractedBox').setAttribute('aria-hidden', 'true');
+
+    try {
+        const fd = new FormData();
+        fd.append('file_id', fileId);
+        fd.append('content_language', 'auto');
+        const res = await fetch('/api/sessions/from-kb', { method: 'POST', body: fd });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: res.statusText }));
+            throw new Error(err.detail || res.statusText);
+        }
+        const data = await res.json();
+
+        extractedSession = data;
+        contentType = String(data.content_type || 'pdf');
+        currentSessionId = String(data.session_id || '');
+        sessionSegments = data.segments || [];
+        applyContentTypeUi();
+        chapterList = data.chapters || [];
+        chapterSegmentsMap = new Map((data.chapter_segments || []).map(ch => [Number(ch.chapter_index), ch.segments || []]));
+        if ((data.chapter_segments || []).length) {
+            liveChapterOptions = (data.chapter_segments || []).map(row => ({
+                index: Number(row.chapter_index),
+                title: row.title || chapterList[Number(row.chapter_index)]?.title || `Chapter ${Number(row.chapter_index) + 1}`,
+                start_page: row.start_page ?? chapterList[Number(row.chapter_index)]?.start_page,
+                end_page: row.end_page ?? chapterList[Number(row.chapter_index)]?.end_page,
+            }));
+        } else if ((data.chapters || []).length) {
+            liveChapterOptions = (data.chapters || []).map((ch, i) => ({
+                index: i, title: ch.title || `Chapter ${i + 1}`,
+                start_page: ch.start_page, end_page: ch.end_page,
+            }));
+        } else {
+            liveChapterOptions = [];
+        }
+        refreshChapterPickers(data.selected_chapter_index);
+        showStatus('Session ready. Click Start teaching.', 'info');
+        $('teachBtn').disabled = false;
+    } catch (e) {
+        showStatus(e.message, 'error');
+        $('teachBtn').disabled = true;
+    }
+}
+
+$('teachBtn').addEventListener('click', async () => {
+    if (!extractedSession?.session_id) return showStatus('Please select a document first.', 'error');
+
+    const btn = $('teachBtn');
+    btn.disabled = true;
+    btn.textContent = 'Connecting\u2026';
+    hideStatus();
+
+    try {
+        const res = await fetch(`/api/sessions/${extractedSession.session_id}/live-config`);
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({ detail: res.statusText }));
+            throw new Error(err.detail || res.statusText);
+        }
+        const liveCfg = await res.json();
+        if (liveCfg.content_type) contentType = liveCfg.content_type;
+        applyContentTypeUi();
+        if (Array.isArray(liveCfg.chapters) && liveCfg.chapters.length && !isPptSession()) {
+            liveChapterOptions = liveCfg.chapters;
+        }
+        const setupPick = $('setupChapterSelect');
+        if (setupPick && setupPick.value !== '') {
+            extractedSession.selected_chapter_index = Number(setupPick.value);
+        }
+        refreshChapterPickers(extractedSession.selected_chapter_index);
+        showStatus('Connecting to Gemini Live tutor\u2026', 'info');
+        await connectGeminiLive(liveCfg, extractedSession);
+    } catch (e) {
+        showStatus(e.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Start teaching';
+    }
+});
+
+// ── Gemini Live (browser ↔ server ↔ Gemini) ──
+
+const geminiState = {
+    micStream: null,
+    inputAudioContext: null,
+    micSource: null,
+    micProcessor: null,
+    zeroGain: null,
+    outputAudioContext: null,
+    outputGain: null,
+    outputAnalyser: null,
+    outputAnalyserBuf: null,
+    nextPlaybackTime: 0,
+    activeSources: new Set(),
+    connected: false,
+    inputSampleRate: 16000,
+};
+
+function arrayBufferToBase64(buffer) {
+    const bytes = new Uint8Array(buffer);
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+        binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+    }
+    return btoa(binary);
+}
+
+function base64ToBytes(base64) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+}
+
+function floatToPcm16(float32Array) {
+    const pcm = new Int16Array(float32Array.length);
+    for (let i = 0; i < float32Array.length; i++) {
+        const sample = Math.max(-1, Math.min(1, float32Array[i]));
+        pcm[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+    }
+    return pcm.buffer;
+}
+
+function wsSend(payload) {
+    if (!liveWs || liveWs.readyState !== WebSocket.OPEN) return;
+    liveWs.send(JSON.stringify(payload));
+}
+
+async function startMicrophone() {
+    geminiState.micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+    geminiState.inputAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    geminiState.inputSampleRate = geminiState.inputAudioContext.sampleRate;
+    geminiState.micSource = geminiState.inputAudioContext.createMediaStreamSource(geminiState.micStream);
+    geminiState.micProcessor = geminiState.inputAudioContext.createScriptProcessor(4096, 1, 1);
+    geminiState.zeroGain = geminiState.inputAudioContext.createGain();
+    geminiState.zeroGain.gain.value = 0;
+
+    geminiState.micProcessor.onaudioprocess = (event) => {
+        if (!geminiState.connected || muted) return;
+        const input = event.inputBuffer.getChannelData(0);
+        const pcmBuffer = floatToPcm16(input);
+        wsSend({
+            type: 'audio',
+            mimeType: `audio/pcm;rate=${geminiState.inputSampleRate}`,
+            data: arrayBufferToBase64(pcmBuffer),
+        });
+    };
+
+    geminiState.micSource.connect(geminiState.micProcessor);
+    geminiState.micProcessor.connect(geminiState.zeroGain);
+    geminiState.zeroGain.connect(geminiState.inputAudioContext.destination);
+}
+
+async function initOutputAudio() {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    geminiState.outputAudioContext = ctx;
+    if (ctx.state === 'suspended') await ctx.resume();
+    geminiState.nextPlaybackTime = ctx.currentTime;
+
+    const gain = ctx.createGain();
+    gain.gain.value = 1.0;
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    analyser.smoothingTimeConstant = 0.6;
+    gain.connect(analyser);
+    gain.connect(ctx.destination);
+    geminiState.outputGain = gain;
+    geminiState.outputAnalyser = analyser;
+    geminiState.outputAnalyserBuf = new Uint8Array(analyser.fftSize);
+}
+
+function playAudioChunk(base64Audio) {
+    if (!geminiState.outputAudioContext) return;
+    const bytes = base64ToBytes(base64Audio);
+    const pcm = new Int16Array(bytes.buffer);
+    const audioBuffer = geminiState.outputAudioContext.createBuffer(1, pcm.length, OUTPUT_SAMPLE_RATE);
+    const channel = audioBuffer.getChannelData(0);
+    for (let i = 0; i < pcm.length; i++) channel[i] = pcm[i] / 32768;
+    const source = geminiState.outputAudioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(geminiState.outputGain || geminiState.outputAudioContext.destination);
+    source.onended = () => geminiState.activeSources.delete(source);
+    const startAt = Math.max(geminiState.outputAudioContext.currentTime + 0.02, geminiState.nextPlaybackTime);
+    source.start(startAt);
+    geminiState.nextPlaybackTime = startAt + audioBuffer.duration;
+    geminiState.activeSources.add(source);
+}
+
+function interruptPlayback() {
+    for (const source of geminiState.activeSources) {
+        try { source.stop(); } catch {}
+    }
+    geminiState.activeSources.clear();
+    if (geminiState.outputAudioContext) {
+        geminiState.nextPlaybackTime = geminiState.outputAudioContext.currentTime;
+    }
+}
+
+function stopMicrophone() {
+    if (geminiState.micProcessor) { geminiState.micProcessor.disconnect(); geminiState.micProcessor.onaudioprocess = null; geminiState.micProcessor = null; }
+    if (geminiState.micSource) { geminiState.micSource.disconnect(); geminiState.micSource = null; }
+    if (geminiState.zeroGain) { geminiState.zeroGain.disconnect(); geminiState.zeroGain = null; }
+    if (geminiState.inputAudioContext) { geminiState.inputAudioContext.close(); geminiState.inputAudioContext = null; }
+    if (geminiState.micStream) { geminiState.micStream.getTracks().forEach(t => t.stop()); geminiState.micStream = null; }
+}
+
+function stopOutputAudio() {
+    interruptPlayback();
+    if (geminiState.outputAudioContext) { geminiState.outputAudioContext.close(); geminiState.outputAudioContext = null; }
+    geminiState.outputGain = null;
+    geminiState.outputAnalyser = null;
+    geminiState.outputAnalyserBuf = null;
+}
+
+function handleServerMessage(data) {
+    if (data.type === 'error') { showStatus(data.message || 'Session error', 'error'); return; }
+    if (data.type === 'ready') { geminiState.connected = true; showStatus('Connected. The tutor is speaking\u2026', 'info'); return; }
+    if (data.type === 'segment') {
+        applySegmentUpdate(data);
+        if (Number.isFinite(data.chapter_index) && !suppressChapterChange) {
+            suppressChapterChange = true;
+            populateChapterSelect($('callChapterSelect'), liveChapterOptions, data.chapter_index);
+            populateChapterSelect($('setupChapterSelect'), liveChapterOptions, data.chapter_index);
+            suppressChapterChange = false;
+        }
+        return;
+    }
+    if (data.type === 'audio' && data.data) { playAudioChunk(data.data); return; }
+    if (data.type === 'interrupted') { interruptPlayback(); }
+}
+
+async function connectGeminiLive(liveCfg, meta) {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${proto}//${location.host}${liveCfg.ws_path}`;
+    await initOutputAudio();
+    await startMicrophone();
+
+    liveWs = new WebSocket(wsUrl);
+
+    liveWs.onopen = () => {
+        const chapterMeta = Number.isInteger(meta.selected_chapter_index) && chapterList[meta.selected_chapter_index]
+            ? ` \u00b7 ${chapterList[meta.selected_chapter_index].title}` : '';
+        const infoText = isPptSession()
+            ? `${meta.segment_count} slides${chapterMeta}`
+            : `${meta.segment_count} segments \u00b7 pages ${meta.start_page || '?'}\u2013${meta.end_page || '?'}${chapterMeta}`;
+        setSessionInfoText(infoText);
+        refreshChapterPickers(meta.selected_chapter_index);
+        openCallUI();
+    };
+
+    liveWs.onmessage = (event) => {
+        try { handleServerMessage(JSON.parse(event.data)); }
+        catch (e) { console.warn('ws message parse', e); }
+    };
+
+    liveWs.onerror = () => {
+        showStatus('WebSocket error \u2014 check server logs and GEMINI_API_KEY.', 'error');
+    };
+
+    liveWs.onclose = () => {
+        geminiState.connected = false;
+        teardown();
+    };
+}
+
+// ── segment UI ──
+
+function showSegment(idx) {
+    if (idx < 0 || idx >= sessionSegments.length) return;
+    const seg = sessionSegments[idx];
+    const pages = Array.isArray(seg.pages) ? seg.pages.join(', ') : '';
+    const lang = seg.source_lang ? ` \u00b7 ${seg.source_lang}` : '';
+    if (isPptSession()) {
+        $('segmentMeta').textContent = `Slide ${idx + 1}/${sessionSegments.length}${lang}`;
+        const counter = $('slideCounter');
+        if (counter) counter.textContent = `Slide ${idx + 1} / ${sessionSegments.length}`;
+        const img = $('slideImg');
+        const placeholder = $('slidePlaceholder');
+        if (img && seg.slide_url) {
+            img.onload = () => { img.style.display = 'block'; if (placeholder) placeholder.style.display = 'none'; };
+            img.onerror = () => { img.style.display = 'none'; if (placeholder) { placeholder.style.display = 'block'; placeholder.textContent = 'Slide unavailable'; } };
+            img.src = seg.slide_url;
+        }
+        $('segmentText').textContent = seg.source_text || '';
+    } else {
+        $('segmentMeta').textContent = `Segment ${idx + 1}/${sessionSegments.length}${pages ? ` \u00b7 pages ${pages}` : ''}${lang}`;
+        $('segmentText').textContent = seg.source_text || '';
+    }
+}
+
+function applySegmentUpdate(md) {
+    if (!md || !Number.isFinite(md.seg)) return;
+    if (md.content_type) { contentType = md.content_type; applyContentTypeUi(); }
+    if (Number.isFinite(md.chapter_index) && chapterSegmentsMap.has(md.chapter_index)) {
+        sessionSegments = chapterSegmentsMap.get(md.chapter_index) || sessionSegments;
+        const chapter = chapterList[md.chapter_index];
+        if (chapter) {
+            const text = isPptSession()
+                ? `${chapter.title} \u00b7 ${sessionSegments.length} slides`
+                : `${chapter.title} \u00b7 ${sessionSegments.length} segments \u00b7 pages ${chapter.start_page}-${chapter.end_page}`;
+            setSessionInfoText(text);
+        }
+    }
+    const rev = Number.isFinite(md.rev) ? md.rev : -1;
+    if (rev >= 0 && rev < lastSegmentRev) return;
+    if (rev >= 0) lastSegmentRev = rev;
+    showSegment(md.seg);
+}
+
+// ── call UI ──
+
+function openCallUI() {
+    $('setupCard').style.display = 'none';
+    $('callOverlay').classList.add('active');
+    applyContentTypeUi();
+    if (isPptSession()) $('callChapterRow').style.display = 'none';
+    lastSegmentRev = -1;
+    if (sessionSegments.length > 0) showSegment(0);
+    startTimer();
+    stopHeroSphere();
+    startCallSphere();
+}
+
+function setSessionInfoText(text) {
+    $('sessionInfo').textContent = text;
+    const pptInfo = $('sessionInfoPpt');
+    if (pptInfo) pptInfo.textContent = text;
+}
+
+function teardown() {
+    $('callOverlay').classList.remove('active');
+    $('setupCard').style.display = '';
+    if ($('callChapterRow')) $('callChapterRow').style.display = 'none';
+    stopTimer();
+    stopCallSphere();
+    startHeroSphere();
+    muted = false;
+    for (const btnId of ['muteBtn', 'muteBtnPpt']) { const el = $(btnId); if (el) el.classList.remove('muted'); }
+    for (const iconId of ['muteIcon', 'muteIconPpt']) { const el = $(iconId); if (el) el.className = 'fas fa-microphone'; }
+    geminiState.connected = false;
+    if (liveWs) { try { wsSend({ type: 'end' }); liveWs.close(); } catch {} liveWs = null; }
+    stopMicrophone();
+    stopOutputAudio();
+    $('segmentMeta').textContent = '\u2014';
+    $('segmentText').textContent = 'Waiting for the tutor\u2026';
+    const slideImg = $('slideImg');
+    if (slideImg) { slideImg.removeAttribute('src'); slideImg.style.display = 'none'; }
+    const placeholder = $('slidePlaceholder');
+    if (placeholder) { placeholder.style.display = 'block'; placeholder.textContent = 'Waiting for the first slide\u2026'; }
+    const card = $('callCard');
+    if (card) card.classList.remove('ppt-mode');
+    contentType = 'pdf';
+    if (extractedSession?.session_id) { $('teachBtn').disabled = false; $('teachBtn').textContent = 'Start teaching'; }
+    else { $('teachBtn').disabled = true; $('teachBtn').textContent = 'Start teaching'; }
+    $('kbFileSelect').value = selectedKbFileId || '';
+}
+
+$('endBtn').addEventListener('click', teardown);
+$('endBtnPpt')?.addEventListener('click', teardown);
+
+$('kbFileSelect').addEventListener('change', (e) => {
+    selectedKbFileId = e.target.value;
+    if (selectedKbFileId) {
+        void createSessionFromKb(selectedKbFileId);
+    } else {
+        $('teachBtn').disabled = true;
+        hideStatus();
+    }
+});
+
+$('setupChapterSelect')?.addEventListener('change', (e) => { if (suppressChapterChange) return; jumpToChapterFromUi(e.target.value, 'setup'); });
+$('callChapterSelect')?.addEventListener('change', (e) => { if (suppressChapterChange) return; jumpToChapterFromUi(e.target.value, 'call'); });
+
+function toggleMute() {
+    if (!liveWs) return;
+    muted = !muted;
+    if (geminiState.micStream) geminiState.micStream.getAudioTracks().forEach(t => { t.enabled = !muted; });
+    for (const btnId of ['muteBtn', 'muteBtnPpt']) { const el = $(btnId); if (el) el.classList.toggle('muted', muted); }
+    const iconClass = muted ? 'fas fa-microphone-slash' : 'fas fa-microphone';
+    for (const iconId of ['muteIcon', 'muteIconPpt']) { const el = $(iconId); if (el) el.className = iconClass; }
+}
+$('muteBtn').addEventListener('click', toggleMute);
+$('muteBtnPpt')?.addEventListener('click', toggleMute);
+
+// ── timer ──
+
+function startTimer() {
+    startTime = performance.now();
+    const tick = () => {
+        const s = ((performance.now() - startTime) / 1000) | 0;
+        const text = `${(s / 60) | 0}:${String(s % 60).padStart(2, '0')}`;
+        $('timerDisplay').textContent = text;
+        const pptDisp = $('timerDisplayPpt');
+        if (pptDisp) pptDisp.textContent = text;
+        const topDisp = $('timerDisplayTop');
+        if (topDisp) topDisp.textContent = text;
+        timerHandle = requestAnimationFrame(tick);
+    };
+    tick();
+}
+function stopTimer() { if (timerHandle) { cancelAnimationFrame(timerHandle); timerHandle = null; } }
+
+// ── status ──
+
+function showStatus(msg, type) {
+    const el = $('status');
+    el.textContent = msg;
+    el.className = 'status-bar ' + type;
+}
+function hideStatus() { $('status').className = 'status-bar'; }
+
+loadKbFiles();
+</script>
+</body>
+</html>

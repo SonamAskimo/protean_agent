@@ -1,0 +1,24 @@
+# Core server + Gemini Live bridge
+websockets>=13.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+python-dotenv>=1.0.1
+
+# Tutor state machine
+langgraph>=0.2.0
+langchain-core>=0.3.0
+
+# PDF ingest (existing flow)
+PyMuPDF>=1.24.0
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
+# PPT ingest (slide text/notes; LibreOffice is separate — see README.md)
+python-pptx>=1.0.0
+
+# Embeddings / subject inference
+openai>=1.40.0
+
+# Gemini non-live (image captioning for KB ingestion)
+google-generativeai>=0.8.0
