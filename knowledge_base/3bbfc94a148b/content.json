@@ -11,11 +11,12 @@
       "slide_index": 0,
       "slide_url": "/api/kb/files/3bbfc94a148b/slides/slide_001.jpg",
       "slide_file": "slide_001.jpg",
-      "source_text": "This appears to be a title or introductory slide for a presentation.\n\nCentral Branding: The main focus is the company logo for \"protean\", which is written in bold, lowercase black letters. Above the name is a vibrant, circular geometric emblem containing a lowercase orange \"p\" in the center, surrounded by a mosaic of red, yellow, green, blue, and purple segments. Below the company name is the tagline, \"Change is growth\".\n\nBackground Elements: The primary background is white. On the left side, there is a large, partially visible, faded graphic in pastel colors that mirrors the segmented, circular design of the main logo.\n\nFooter Text: Across the bottom of the slide is a gradient band that transitions from orange on the left to a teal-green on the right. On the left side of this band, there is white text that reads:\n\n\"Protean Value-Added Services\"\n\n\"ProSure (Product Feature & Detailed Customer Journey)\"",
+      "source_text": "TITLE SLIDE (framing only — do not describe logo, colors, layout, or branding).\n\nTopic for the student: ProSure (Product Feature & Detailed Customer Journey).\n\nTeach this slide in one or two sentences: what this session covers, then a short check-in (e.g. \"Ready to continue?\"). When the student confirms, call `navigate_segment` with direction \"next\" — do not narrate visual design details.",
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "title"
     },
     {
       "segment_id": "s_0002",
@@ -29,7 +30,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0003",
@@ -43,7 +45,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0004",
@@ -57,7 +60,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0005",
@@ -71,7 +75,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0006",
@@ -85,7 +90,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0007",
@@ -99,7 +105,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0008",
@@ -113,7 +120,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0009",
@@ -127,7 +135,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0010",
@@ -141,7 +150,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0011",
@@ -155,7 +165,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0012",
@@ -169,7 +180,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0013",
@@ -183,7 +195,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0014",
@@ -197,7 +210,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0015",
@@ -211,7 +225,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0016",
@@ -225,7 +240,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0017",
@@ -239,7 +255,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0018",
@@ -253,7 +270,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0019",
@@ -267,7 +285,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0020",
@@ -281,7 +300,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0021",
@@ -295,7 +315,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0022",
@@ -309,7 +330,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0023",
@@ -323,7 +345,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0024",
@@ -337,7 +360,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0025",
@@ -351,7 +375,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0026",
@@ -365,7 +390,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0027",
@@ -379,7 +405,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     },
     {
       "segment_id": "s_0028",
@@ -393,7 +420,8 @@
       "source_lang": "en",
       "chapter_id": "",
       "chapter_title": "Step-by-Step Guide",
-      "chapter_index": -1
+      "chapter_index": -1,
+      "slide_type": "content"
     }
   ],
   "chapters": [],

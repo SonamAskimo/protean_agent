@@ -25,6 +25,7 @@ from ..ingest.pdf_extract import (
 )
 from ..ingest.ppt_extract import ingest_pptx
 from ..ingest.segmenter import build_segments
+from .slide_type import enrich_segment
 from . import store
 
 logger = logging.getLogger("kb-ingest")
@@ -284,7 +285,7 @@ async def ingest_image_pdf(file_id: str) -> None:
         for i, img_path in enumerate(image_paths):
             description = await _caption_image(img_path)
             slide_url = f"/api/kb/files/{file_id}/slides/{img_path.name}"
-            segments.append({
+            seg = {
                 "segment_id": f"s_{i + 1:04d}",
                 "pages": [i + 1],
                 "slide_index": i,
@@ -295,7 +296,9 @@ async def ingest_image_pdf(file_id: str) -> None:
                 "chapter_id": "",
                 "chapter_title": meta.get("name", "Document"),
                 "chapter_index": -1,
-            })
+            }
+            enrich_segment(seg, description)
+            segments.append(seg)
 
         content = {
             "content_type": "pdf",
@@ -353,7 +356,7 @@ async def ingest_ppt(file_id: str) -> None:
             slide_url = f"/api/kb/files/{file_id}/slides/{s.image_path.name}"
             detected = detect_source_lang(combined_text)
             sl = resolve_segment_lang("auto", detected)
-            segments.append({
+            seg = {
                 "segment_id": f"s_{s.slide_num:04d}",
                 "pages": [s.slide_num],
                 "slide_index": s.slide_index,
@@ -364,7 +367,9 @@ async def ingest_ppt(file_id: str) -> None:
                 "chapter_id": "",
                 "chapter_title": meta.get("name", "Presentation"),
                 "chapter_index": -1,
-            })
+            }
+            enrich_segment(seg, combined_text)
+            segments.append(seg)
 
         deck_title = Path(meta.get("name", "deck")).stem
         chapter_preview = " ".join(

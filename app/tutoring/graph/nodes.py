@@ -11,6 +11,7 @@ from .state import TutorState
 # Single words like "next", "skip", "okay" are intentionally excluded to avoid
 # accidental advances when the student is just talking.
 _CONTINUE = {
+    "next slide",
     "next paragraph",
     "next segment",
     "next part",
@@ -23,6 +24,7 @@ _CONTINUE = {
 
 # Explicit "move backward" phrases.
 _GO_BACK = {
+    "previous slide",
     "previous paragraph",
     "previous segment",
     "previous part",
@@ -100,6 +102,36 @@ def is_segment_navigation(user_input: str) -> bool:
     if _match(_CONTINUE, low) or _match(_GO_BACK, low):
         return True
     return _short_navigation(low) is not None
+
+
+# Pure affirmations / backchannels. When the WHOLE utterance is made of these
+# (and it is not a question), the student is acknowledging — not asking a doubt.
+# Such turns must NOT suppress auto-advance, otherwise the lesson stalls and the
+# student is forced to explicitly say "next slide" every time.
+_ACK_TOKENS = {
+    "yeah", "yea", "yes", "yep", "yup", "ya", "yah",
+    "ok", "okay", "k", "kk",
+    "mhm", "mmm", "mm", "hmm", "hm", "mhmm", "uh", "uhhuh",
+    "got", "it", "i", "you", "understood", "understand",
+    "sure", "right", "alright", "cool", "good", "fine", "great", "nice",
+    "done", "perfect", "clear",
+    "thik", "theek", "hai", "haan", "han", "ha", "ji", "achha", "acha",
+    "samajh", "samjh", "gaya", "gya", "gaye", "liya",
+    "thanks", "thank", "thx",
+    "and", "so", "now", "the", "this", "that",
+}
+
+
+def is_acknowledgment(user_input: str) -> bool:
+    """True when the utterance is only affirmation/backchannel words (no question)."""
+    u = (user_input or "").strip()
+    if not u or "?" in u:
+        return False
+    tokens = [t.strip(" .,!;:—–-\"'") for t in u.lower().split()]
+    tokens = [t for t in tokens if t]
+    if not tokens or len(tokens) > 6:
+        return False
+    return all(t in _ACK_TOKENS for t in tokens)
 
 
 # ── node functions ──

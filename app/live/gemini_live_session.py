@@ -24,8 +24,6 @@ from openai import OpenAI
 
 from ..core.paths import SESSIONS as SESSIONS_DIR
 from ..core.paths import UPLOADS as UPLOADS_DIR
-from ..tutoring.chapter_voice_nav import analyze_chapter_voice_nav
-from ..tutoring.graph.nodes import is_segment_navigation
 from ..tutoring.prompts import build_segment_injection
 from ..tutoring.tutor_llm import GraphRunner
 
@@ -86,11 +84,9 @@ def cleanup_session_uploads(session_id: str) -> None:
 
 
 
-_POLL_INTERVAL = 0.5
-_COVERED_IDLE_S = 1.0
-_FALLBACK_IDLE_S = 5.0
-_RESUME_HINT_MAX_CHARS = 900
-_RESUME_HINT_DELAY_S = 1.5
+# Block back-to-back tool navigations (model firing navigate_segment twice in
+# one turn, e.g. 3→4→5) — one student request should move exactly one segment.
+_CONSECUTIVE_TOOL_NAV_COOLDOWN_S = 3.0
 
 _RAG_EMBEDDING_MODEL = "text-embedding-3-small"
 _RAG_MAX_CHARS_PER_CHUNK = 900
@@ -195,10 +191,6 @@ class GeminiLiveTutorSession:
 
         self._auto_task: asyncio.Task | None = None
         self._last_activity_time = time.monotonic()
-        # Estimated wall-clock time at which the browser will finish playing the
-        # audio we've forwarded so far. Gemini streams audio much faster than
-        # the browser plays it, so we use this (not chunk-arrival time) as the
-        # "user just heard the agent" marker for auto-advance.
         self._audio_play_until_ts = time.monotonic()
         self._turn_lock = asyncio.Lock()
         # Buffer for streaming user-speech transcription. Gemini emits
@@ -208,11 +200,12 @@ class GeminiLiveTutorSession:
         self._pending_user_text = ""
         self._pending_user_dispatched_for_turn = False
         self._logged_first_server_content = False
-        # Wall-clock timestamp of the last tool-driven segment navigation.
-        # The transcription path (_process_user_input) checks this so it doesn't
-        # double-advance when the model both calls navigate_segment *and* the
-        # final transcript "next segment" arrives a beat later.
+        # Wall-clock timestamp of the last tool-driven segment navigation, used
+        # to reject an accidental back-to-back second navigate_segment call.
         self._last_tool_nav_ts = 0.0
+        self._last_segment_change_ts = 0.0
+        self._last_segment_change_source = ""
+        self._last_segment_change_direction = ""
         self._segment_rev = 0
         self._last_sent_segment_idx: int | None = None
         self._assistant_segment_text = ""
@@ -395,13 +388,21 @@ class GeminiLiveTutorSession:
         return {
             "name": "navigate_segment",
             "description": (
-                "Move to the next or previous segment when the student explicitly asks "
-                "to navigate within the CURRENT chapter (e.g. \"next segment\", "
-                "\"next paragraph\", \"previous segment\", \"go back\", \"skip\", "
-                "\"aage chalo\", \"pichla segment\", \"agla paragraph\"). Call this "
-                "IMMEDIATELY as the first thing in your response — BEFORE speaking "
-                "the acknowledgement. "
-                "Do NOT use this for chapter switches (use jump_to_chapter)."
+                "Move exactly ONE slide/segment forward or backward. You are in full "
+                "control of slide navigation — call this whenever the lesson should move "
+                "by one step: when the student asks (\"next slide\", \"previous segment\", "
+                "\"go back\", \"aage chalo\", \"pichla segment\") OR when you have finished "
+                "teaching the current slide and the student is ready to continue (e.g. they "
+                "said \"yes\"/\"got it\"/\"understood\"). Call it EXACTLY ONCE per move, as "
+                "the FIRST thing in your response — before speaking. "
+                "To jump more than one slide or to a specific slide number, use goto_slide. "
+                "Do NOT call it for chapter switches (use jump_to_chapter). "
+                "Do NOT call it when the student asks you to re-explain, repeat, clarify, or "
+                "expand something on the CURRENT slide (\"explain point 2 again\", "
+                "\"what does this mean\", \"on this slide…\") — a number like \"point 2\" "
+                "refers to content ON the current slide, NOT a slide number; STAY and answer. "
+                "On TITLE/INTRO slides (SLIDE TYPE in context), frame the topic briefly then "
+                "call next when the student is ready — do not narrate branding or visuals."
             ),
             "parameters": {
                 "type": "OBJECT",
@@ -449,6 +450,29 @@ class GeminiLiveTutorSession:
                     "required": ["chapter_index"],
                 },
             },
+            {
+                "name": "goto_slide",
+                "description": (
+                    "Jump directly to a specific slide/segment by its number when the "
+                    "student names one (e.g. \"go to slide 7\", \"back to slide 3\", "
+                    "\"jump to the last slide\") or when you need to move more than one "
+                    "step at once. The slide image and its description are sent to you "
+                    "right after. Use navigate_segment for simple one-step next/previous."
+                ),
+                "parameters": {
+                    "type": "OBJECT",
+                    "properties": {
+                        "slide_number": {
+                            "type": "INTEGER",
+                            "description": (
+                                "1-based slide/segment number to jump to "
+                                "(1 = first slide). Clamped to valid range."
+                            ),
+                        },
+                    },
+                    "required": ["slide_number"],
+                },
+            },
             self._navigate_segment_tool_declaration(),
         ]
 
@@ -490,9 +514,29 @@ class GeminiLiveTutorSession:
             return
         await self._gemini_send_await({"realtimeInput": {"text": trimmed}})
 
+    def _mark_segment_change(self, source: str, *, direction: str = "") -> None:
+        self._last_segment_change_ts = time.monotonic()
+        self._last_segment_change_source = source
+        if direction:
+            self._last_segment_change_direction = direction
+        self._last_activity_time = time.monotonic()
+
     async def _inject_lesson_context(
-        self, *, prev_idx: int, new_idx: int, prev_phase: str, new_phase: str
+        self,
+        *,
+        prev_idx: int,
+        new_idx: int,
+        prev_phase: str,
+        new_phase: str,
+        source: str = "langgraph",
     ) -> None:
+        if new_idx == prev_idx and new_phase == prev_phase:
+            return
+        direction = "next" if new_idx > prev_idx else "previous" if new_idx < prev_idx else ""
+        self._mark_segment_change(source, direction=direction)
+        await self._push_segment_metadata(force=True)
+        if self._content_type == "ppt":
+            await self._send_slide_vision(new_idx)
         payload = build_segment_injection(
             self._runner.state,
             prev_segment_idx=prev_idx,
@@ -501,9 +545,6 @@ class GeminiLiveTutorSession:
             new_phase=new_phase,
         )
         await self._inject_text(payload)
-        await self._push_segment_metadata(force=True)
-        if self._content_type == "ppt":
-            await self._send_slide_vision(new_idx)
 
     # ── tool handlers ──
 
@@ -569,13 +610,23 @@ class GeminiLiveTutorSession:
                     msg = await self._navigate_segment(direction)
                     result = {"result": msg}
 
+            elif name == "goto_slide":
+                try:
+                    slide_number = int(args.get("slide_number"))
+                except Exception:
+                    result = {"result": "Invalid slide_number."}
+                else:
+                    msg = await self._goto_segment(slide_number - 1)
+                    result = {"result": msg}
+
             responses.append({"id": fc_id, "name": name, "response": result})
 
-        await self._gemini_send_await({"toolResponse": {"functionResponses": responses}})
+        # Send slide vision before toolResponse so the model sees the slide it should narrate.
         if self._slide_vision_after_tool is not None:
             idx = self._slide_vision_after_tool
             self._slide_vision_after_tool = None
             await self._send_slide_vision(idx)
+        await self._gemini_send_await({"toolResponse": {"functionResponses": responses}})
 
     async def _navigate_segment(self, direction: str) -> str:
         """Fast-path segment navigation triggered by the ``navigate_segment`` tool.
@@ -605,6 +656,26 @@ class GeminiLiveTutorSession:
             if total == 0:
                 return "No segments available in this chapter."
 
+            # Reject a second tool navigation that arrives right after the first
+            # (the model sometimes fires navigate_segment twice in one turn,
+            # skipping a slide). One student request = one segment move.
+            since_last_tool = time.monotonic() - self._last_tool_nav_ts
+            if (
+                self._last_segment_change_source == "tool"
+                and since_last_tool < _CONSECUTIVE_TOOL_NAV_COOLDOWN_S
+            ):
+                self._last_tool_nav_ts = time.monotonic()
+                logger.info(
+                    "navigate_segment: blocked — tool nav %.2fs ago (seg=%d), avoiding double-skip",
+                    since_last_tool,
+                    prev_idx,
+                )
+                return (
+                    f"You just moved to slide {prev_idx + 1} of {total}. "
+                    "Teach THIS slide now — do NOT call navigate_segment again. "
+                    "One request moves exactly one slide; wait for the student to ask again."
+                )
+
             if direction == "next" and prev_idx + 1 >= total:
                 logger.info("navigate_segment: at end of chapter (seg=%d)", prev_idx)
                 self._last_tool_nav_ts = time.monotonic()
@@ -633,14 +704,13 @@ class GeminiLiveTutorSession:
                 "continue" if direction == "next" else "go_back"
             )
             self._assistant_segment_text = ""
-            self._last_activity_time = time.monotonic()
             self._last_tool_nav_ts = time.monotonic()
+            self._mark_segment_change("tool", direction=direction)
             logger.info(
                 "navigate_segment: %s → seg %d→%d (phase %r→%r)",
                 direction, prev_idx, new_idx, prev_phase, new_phase,
             )
 
-            # UI side — fast.
             await self._push_segment_metadata(force=True)
 
             # Build the new segment context and return it as the tool result.
@@ -658,10 +728,63 @@ class GeminiLiveTutorSession:
             )
             self._slide_vision_after_tool = new_idx
             return (
-                f"Moved to slide {new_idx + 1} of {total}. A JPEG of this slide will "
-                f"arrive in your vision stream immediately after this tool result. "
-                f"Do NOT call navigate_segment again — explain what is visible on "
-                f"the slide (diagrams, labels, layout), using notes only as supplement.\n\n"
+                f"Moved to slide {new_idx + 1} of {total}. A JPEG of this slide is "
+                f"being sent to your vision stream now — wait for it, then explain "
+                f"what is visible (diagrams, labels, layout). Do NOT call "
+                f"navigate_segment again.\n\n"
+                f"{context_payload}"
+            )
+
+    async def _goto_segment(self, target_idx: int) -> str:
+        """Absolute jump to a slide/segment by index (0-based), driven by goto_slide."""
+        async with self._turn_lock:
+            prev_idx = int(self._runner.state.get("current_segment_idx", 0) or 0)
+            prev_phase = str(self._runner.state.get("phase") or "")
+            segments = self._runner.state.get("segments") or []
+            total = len(segments)
+            if total == 0:
+                return "No segments available in this chapter."
+
+            new_idx = max(0, min(target_idx, total - 1))
+            if new_idx == prev_idx:
+                self._last_tool_nav_ts = time.monotonic()
+                await self._push_segment_metadata(force=True)
+                self._slide_vision_after_tool = new_idx
+                return (
+                    f"Already on slide {new_idx + 1} of {total}. Teach THIS slide; "
+                    "do not jump again unless the student asks."
+                )
+
+            new_phase = "teaching"
+            self._runner.state["current_segment_idx"] = new_idx
+            self._runner.state["phase"] = new_phase
+            self._runner.state["intent"] = (
+                "continue" if new_idx > prev_idx else "go_back"
+            )
+            self._assistant_segment_text = ""
+            self._last_tool_nav_ts = time.monotonic()
+            self._mark_segment_change(
+                "tool", direction="next" if new_idx > prev_idx else "previous"
+            )
+            logger.info(
+                "goto_slide: seg %d→%d (phase %r→%r)",
+                prev_idx, new_idx, prev_phase, new_phase,
+            )
+
+            await self._push_segment_metadata(force=True)
+
+            context_payload = build_segment_injection(
+                self._runner.state,
+                prev_segment_idx=prev_idx,
+                new_segment_idx=new_idx,
+                prev_phase=prev_phase,
+                new_phase=new_phase,
+            )
+            self._slide_vision_after_tool = new_idx
+            return (
+                f"Jumped to slide {new_idx + 1} of {total}. A JPEG of this slide is "
+                f"being sent to your vision stream now — wait for it, then explain "
+                f"what is visible (diagrams, labels, layout).\n\n"
                 f"{context_payload}"
             )
 
@@ -739,152 +862,16 @@ class GeminiLiveTutorSession:
         asyncio.create_task(self._process_user_input(text))
 
     async def _process_user_input(self, user_input: str) -> None:
-        async with self._turn_lock:
-            self._last_activity_time = time.monotonic()
-            jumpable = self._runner.state.get("jumpable_chapter_indices") or []
-            cur_ch = int(self._runner.state.get("selected_chapter_index", -1) or -1)
-            resolved, _ = analyze_chapter_voice_nav(
-                user_input, self._chapters, jumpable, cur_ch
-            )
-            if resolved is not None and resolved != cur_ch:
-                await self._switch_to_chapter(resolved)
-                return
+        """Record the student's utterance.
 
-            prev_idx = int(self._runner.state.get("current_segment_idx", 0) or 0)
-            prev_phase = str(self._runner.state.get("phase") or "")
-
-            # Explicit segment navigation ("next/previous segment", "go back",
-            # short forms like "next" / "previous", Hinglish variants) MUST
-            # always reach the LangGraph runner so we (a) update
-            # current_segment_idx, (b) inject the new segment's source_text,
-            # and (c) push the new segment to the UI. Otherwise Gemini hears
-            # the audio and responds from its current-segment-only system
-            # prompt, which means it hallucinates the next/previous segment.
-            is_nav = is_segment_navigation(user_input)
-
-            # If the navigate_segment tool already handled this exact turn
-            # (the tool call arrives a beat before the final transcript), the
-            # runner would advance a SECOND time. Skip the LangGraph turn in
-            # that case but keep going for non-nav inputs.
-            if is_nav and (time.monotonic() - self._last_tool_nav_ts) < 5.0:
-                logger.info(
-                    "skipping LangGraph nav for %r — handled by navigate_segment tool %.2fs ago",
-                    user_input[:80],
-                    time.monotonic() - self._last_tool_nav_ts,
-                )
-                return
-
-            self._runner.process_turn(user_input)
-            new_idx = int(self._runner.state.get("current_segment_idx", 0) or 0)
-            new_phase = str(self._runner.state.get("phase") or "")
-            intent = str(self._runner.state.get("intent") or "")
-            logger.info(
-                "process_turn: %r → intent=%s seg %d→%d phase %r→%r",
-                user_input[:80], intent, prev_idx, new_idx, prev_phase, new_phase,
-            )
-            if new_idx != prev_idx or new_phase != prev_phase:
-                self._assistant_segment_text = ""
-                await self._inject_lesson_context(
-                    prev_idx=prev_idx,
-                    new_idx=new_idx,
-                    prev_phase=prev_phase,
-                    new_phase=new_phase,
-                )
-            elif is_nav and new_idx == prev_idx:
-                # User asked to navigate but we're at a boundary (segment 0
-                # for "previous", last segment for "next"). Refresh metadata
-                # so the UI sticks to the correct segment and the agent gets
-                # a gentle nudge.
-                logger.info("nav at boundary (seg=%d intent=%s)", prev_idx, intent)
-                await self._push_segment_metadata(force=True)
-                await self._inject_text(
-                    "NAVIGATION: you are already at the boundary of this chapter — "
-                    "stay on the current segment and continue teaching it briefly, "
-                    "then offer to move to the next chapter if appropriate."
-                )
-            else:
-                intent = str(self._runner.state.get("intent") or "")
-                if intent in ("question", "simpler") and len(self._assistant_segment_text) >= 40:
-                    await asyncio.sleep(_RESUME_HINT_DELAY_S)
-                    tail = self._assistant_segment_text[-_RESUME_HINT_MAX_CHARS:]
-                    await self._inject_text(
-                        f"RESUME — answer briefly, then continue the SAME segment from:\n\n{tail}"
-                    )
-
-    def _segment_content_covered(self) -> bool:
-        idx = int(self._runner.state.get("current_segment_idx", 0) or 0)
-        segments = self._runner.state.get("segments") or []
-        if idx >= len(segments):
-            return False
-        source = (segments[idx].get("source_text") or "").strip()
-        agent_text = self._assistant_segment_text
-        if len(source) < 30 or len(agent_text) < 50:
-            return len(source) < 30
-        source_norm = " ".join(source.lower().split())
-        agent_norm = " ".join(agent_text.lower().split())
-        tail = source_norm[max(0, len(source_norm) * 6 // 10) :]
-        words = tail.split()
-        if len(words) < 4:
-            return True
-        ngrams = [" ".join(words[i : i + 4]) for i in range(len(words) - 3)]
-        return any(ng in agent_norm for ng in ngrams)
-
-    async def _auto_continue_loop(self) -> None:
-        await self._gemini_ready.wait()
-        await asyncio.sleep(3.5)
+        Navigation and lesson pacing are driven entirely by Gemini tool calls
+        (navigate_segment / goto_slide / jump_to_chapter). The server no longer
+        parses transcripts for navigation or runs an auto-advance loop, so this
+        just tracks activity for logging; Gemini hears the audio directly and
+        decides how to respond and when to move slides.
+        """
         self._last_activity_time = time.monotonic()
-        done_logged = False
-        try:
-            while not self._closed:
-                await asyncio.sleep(_POLL_INTERVAL)
-                if self._runner.state.get("phase") == "done":
-                    if not done_logged:
-                        logger.info("auto-advance: phase=done, pausing")
-                        done_logged = True
-                    self._last_activity_time = time.monotonic()
-                    continue
-                if done_logged:
-                    done_logged = False
-                    self._last_activity_time = time.monotonic()
-
-                idle = time.monotonic() - self._last_activity_time
-                covered = self._segment_content_covered()
-                required = _COVERED_IDLE_S if covered else _FALLBACK_IDLE_S
-                if idle < required:
-                    continue
-
-                cur_idx = int(self._runner.state.get("current_segment_idx", 0) or 0)
-                cur_phase = str(self._runner.state.get("phase") or "")
-
-                async with self._turn_lock:
-                    idle = time.monotonic() - self._last_activity_time
-                    covered = self._segment_content_covered()
-                    required = _COVERED_IDLE_S if covered else _FALLBACK_IDLE_S
-                    if idle < required:
-                        continue
-                    prev_idx = cur_idx
-                    prev_phase = cur_phase
-                    self._runner.process_turn("")
-                    new_idx = int(self._runner.state.get("current_segment_idx", 0) or 0)
-                    new_phase = str(self._runner.state.get("phase") or "")
-                    if new_idx == prev_idx and prev_phase == "teaching" and new_phase == "greeting":
-                        self._runner.state["phase"] = "teaching"
-                        new_phase = "teaching"
-                    if new_idx != prev_idx or new_phase != prev_phase:
-                        logger.info(
-                            "auto-advance: seg %d→%d phase %r→%r",
-                            prev_idx, new_idx, prev_phase, new_phase,
-                        )
-                        self._assistant_segment_text = ""
-                        await self._inject_lesson_context(
-                            prev_idx=prev_idx,
-                            new_idx=new_idx,
-                            prev_phase=prev_phase,
-                            new_phase=new_phase,
-                        )
-                        self._last_activity_time = time.monotonic()
-        except asyncio.CancelledError:
-            return
+        logger.info("user said: %r", user_input[:160])
 
     # ── Gemini message loop ──
 
@@ -962,7 +949,9 @@ class GeminiLiveTutorSession:
             chunk = str(out_tx["text"])
             self._assistant_segment_text += chunk
             if out_tx.get("finished"):
-                self._last_activity_time = time.monotonic()
+                self._last_activity_time = max(
+                    time.monotonic(), self._audio_play_until_ts
+                )
 
         if content.get("turnComplete"):
             self._user_speaking_now = False
@@ -1117,7 +1106,9 @@ class GeminiLiveTutorSession:
             self._gemini_ws = gemini_ws
             try:
                 await self._gemini_send_await(self._build_setup_message())
-                self._auto_task = asyncio.create_task(self._auto_continue_loop())
+                # Navigation and pacing are fully driven by Gemini tool calls
+                # (navigate_segment / goto_slide / jump_to_chapter). No server-side
+                # auto-advance loop — the agent decides when to move slides.
                 # IMPORTANT: do NOT await rag_task before starting readers. The
                 # gemini reader must run so setupComplete is processed and the
                 # browser gets `ready`; the RAG index continues building in the

@@ -714,6 +714,8 @@ let startTime = 0;
 let extractedSession = null;
 let sessionSegments = [];
 let lastSegmentRev = -1;
+let displayedSegIdx = -1;
+let slideLoadToken = 0;
 let chapterList = [];
 let chapterSegmentsMap = new Map();
 let currentSessionId = '';
@@ -1280,9 +1282,10 @@ async function connectGeminiLive(liveCfg, meta) {
 
 // ── segment UI ──
 
-function showSegment(idx) {
+function showSegment(idx, slideUrlOverride) {
     if (idx < 0 || idx >= sessionSegments.length) return;
     const seg = sessionSegments[idx];
+    const slideUrl = slideUrlOverride || seg.slide_url || '';
     const pages = Array.isArray(seg.pages) ? seg.pages.join(', ') : '';
     const lang = seg.source_lang ? ` \u00b7 ${seg.source_lang}` : '';
     if (isPptSession()) {
@@ -1291,10 +1294,22 @@ function showSegment(idx) {
         if (counter) counter.textContent = `Slide ${idx + 1} / ${sessionSegments.length}`;
         const img = $('slideImg');
         const placeholder = $('slidePlaceholder');
-        if (img && seg.slide_url) {
-            img.onload = () => { img.style.display = 'block'; if (placeholder) placeholder.style.display = 'none'; };
-            img.onerror = () => { img.style.display = 'none'; if (placeholder) { placeholder.style.display = 'block'; placeholder.textContent = 'Slide unavailable'; } };
-            img.src = seg.slide_url;
+        if (img && slideUrl) {
+            const loadId = ++slideLoadToken;
+            img.onload = () => {
+                if (loadId !== slideLoadToken) return;
+                img.style.display = 'block';
+                if (placeholder) placeholder.style.display = 'none';
+            };
+            img.onerror = () => {
+                if (loadId !== slideLoadToken) return;
+                img.style.display = 'none';
+                if (placeholder) {
+                    placeholder.style.display = 'block';
+                    placeholder.textContent = 'Slide unavailable';
+                }
+            };
+            img.src = slideUrl;
         }
         $('segmentText').textContent = seg.source_text || '';
     } else {
@@ -1319,7 +1334,16 @@ function applySegmentUpdate(md) {
     const rev = Number.isFinite(md.rev) ? md.rev : -1;
     if (rev >= 0 && rev < lastSegmentRev) return;
     if (rev >= 0) lastSegmentRev = rev;
-    showSegment(md.seg);
+    const segIdx = md.seg;
+    if (segIdx >= 0 && segIdx < sessionSegments.length && md.slide_url) {
+        sessionSegments[segIdx] = { ...sessionSegments[segIdx], slide_url: md.slide_url };
+    }
+    if (segIdx !== displayedSegIdx) {
+        interruptPlayback();
+        displayedSegIdx = segIdx;
+    }
+    const slideUrl = md.slide_url || (sessionSegments[segIdx] && sessionSegments[segIdx].slide_url) || '';
+    showSegment(segIdx, slideUrl);
 }
 
 // ── call UI ──
@@ -1330,6 +1354,8 @@ function openCallUI() {
     applyContentTypeUi();
     if (isPptSession()) $('callChapterRow').style.display = 'none';
     lastSegmentRev = -1;
+    displayedSegIdx = -1;
+    slideLoadToken = 0;
     if (sessionSegments.length > 0) showSegment(0);
     startTimer();
     stopHeroSphere();
@@ -1353,6 +1379,8 @@ function teardown() {
     for (const btnId of ['muteBtn', 'muteBtnPpt']) { const el = $(btnId); if (el) el.classList.remove('muted'); }
     for (const iconId of ['muteIcon', 'muteIconPpt']) { const el = $(iconId); if (el) el.className = 'fas fa-microphone'; }
     geminiState.connected = false;
+    displayedSegIdx = -1;
+    slideLoadToken = 0;
     if (liveWs) { try { wsSend({ type: 'end' }); liveWs.close(); } catch {} liveWs = null; }
     stopMicrophone();
     stopOutputAudio();

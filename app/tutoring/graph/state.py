@@ -13,6 +13,8 @@ class SegmentDict(TypedDict, total=False):
     slide_index: NotRequired[int]
     slide_url: NotRequired[str]
     slide_file: NotRequired[str]
+    slide_type: NotRequired[str]
+    """title | content — title/intro slides get brief framing only."""
 
 
 class TutorState(TypedDict, total=False):

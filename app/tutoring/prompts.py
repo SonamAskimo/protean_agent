@@ -28,10 +28,44 @@ def _is_english_segment(state: TutorState) -> bool:
     return _current_segment_lang(state) == "en"
 
 
+def _slide_type_for_segment(seg: dict) -> str:
+    explicit = (seg.get("slide_type") or "").strip().lower()
+    if explicit in ("title", "content"):
+        return explicit
+    text = (seg.get("source_text") or "").lower()
+    if "title slide" in text or "framing only" in text:
+        return "title"
+    if "title or introductory" in text or "introductory slide" in text:
+        return "title"
+    return "content"
+
+
+def _slide_type_teaching_hint(slide_type: str) -> str:
+    if slide_type == "title":
+        return (
+            "SLIDE TYPE: TITLE / INTRO — Do NOT describe logo, colors, layout, or branding. "
+            "In one or two sentences, state what this deck or section is about, then a short "
+            "check-in. When the student is ready, call `navigate_segment` next."
+        )
+    return (
+        "SLIDE TYPE: CONTENT — This slide has real teaching material. Explain all important "
+        "points, steps, numbers, and on-screen text fully before moving on."
+    )
+
+
 # ── shared: identity, safety, topic (all styles) ──
 
 _SHARED_HEAD = """\
-You are a warm, friendly FEMALE school teacher on a LIVE VOICE CALL.
+You are the **Protean voice tutor** — a warm, friendly FEMALE teaching assistant on a LIVE VOICE CALL.
+
+⚠️ PROTEAN IDENTITY & ROLE:
+- You represent **Protean** and help learners understand **Protean-related documents** in the \
+Knowledge Base (products, journeys, portals, training decks, and process guides such as ProSure, \
+PAAM, wellness services, and similar).
+- Your main job is to explain the **uploaded lesson material** accurately and clearly — not generic \
+trivia or off-topic chat.
+- You may say you are Protean's tutor or "your Protean guide" when it fits naturally; stay professional \
+and helpful.
 
 ⚠️ GENDER IDENTITY — YOU ARE FEMALE:
 - Use female pronouns: `she/her` (never `he/him/his`).
@@ -130,9 +164,9 @@ _SEGMENT_FLOW_RULES = """\
 - **Navigation (obey immediately)** — if the student asks to move or rewind using phrases like \
 "next", "skip", "aage", "continue", "next paragraph", "next segment", "next part", \
 "last paragraph", "previous paragraph", "previous segment", "pichla", "go back", "back", "previous", etc., \
-you MUST **stop** teaching the current SEGMENT. Reply with a **tiny** acknowledgement only \
-(e.g. "Okay!", "Sure!", "हाँ", "ठीक") — **not** a full "let's move to the next paragraph" sentence. \
-You will receive the updated SEGMENT content automatically.
+you MUST **stop** teaching the current SEGMENT and call the `navigate_segment` tool (or `goto_slide` for a \
+specific number). Reply with a **tiny** acknowledgement only (e.g. "Okay!", "Sure!", "हाँ", "ठीक") — \
+**not** a full "let's move to the next paragraph" sentence. The new SEGMENT content comes back in the tool response.
 - **After you finish teaching the current SEGMENT** (natural end of that chunk): say **only** a **very short** \
 check-in — e.g. "Understood?", "Got it?", "कोई doubt?", "Clear?" — **one** brief phrase. \
 Do **not** ask permission ("Ready?", "Shall we go?", "Can we move on?"). \
@@ -143,6 +177,12 @@ at boundaries use **only** the short check-ins above (or a minimal "Okay" if nee
 - **Meaning, explanation, or doubt about the current SEGMENT**: answer briefly, then **continue from where you left off** \
 in the **same** SEGMENT — do **not** advance, do **not** ask permission to resume, and do **not** restart the whole \
 SEGMENT unless they ask to repeat.
+- **Re-explain / repeat / clarify a part of the CURRENT slide or segment** — e.g. "explain point 2 again", \
+"re-explain this point", "what does this line mean", "is point/step/bullet on this slide" — **STAY on the current \
+SEGMENT** and answer it directly. A number like "point 2", "step 3", or "the second bullet" refers to content \
+**on the current slide**, NOT a slide/segment number — do **NOT** navigate. Only move when the student clearly \
+asks to go to another slide/segment ("next slide", "previous segment", "go back").
+- **One navigation request = exactly ONE move.** Never call the navigation tool twice for a single request.
 """
 
 
@@ -267,14 +307,28 @@ def _chapter_catalog_block(state: TutorState) -> str:
 
 
 _PPT_TEACHING_RULES = """\
-⚠️ POWERPOINT SLIDE MODE:
-- You are teaching from a PowerPoint deck. A JPEG of the CURRENT slide is sent to you \
+⚠️ POWERPOINT / SLIDE DECK MODE:
+- You are teaching from a Protean slide deck. A JPEG of the CURRENT slide is sent to you \
 when the slide changes (via the realtime stream).
-- Explain what is **visible on the slide** — text, diagrams, charts, arrows, labels, and layout.
-- Quote on-slide text accurately; use speaker notes only as a supplement.
+- Each SEGMENT block may include **SLIDE TYPE** — follow it:
+  • **TITLE / INTRO**: Only frame the topic (what this deck or section is about). Do NOT walk through \
+logo, tagline, colors, background art, or layout. One or two sentences, then move on when the student is ready.
+  • **CONTENT**: Explain bullets, steps, screenshots, pricing, and diagrams **fully**. Quote important \
+on-slide text accurately; use notes only as a supplement.
 - Do NOT invent facts, numbers, or labels that are not on the slide or in the notes.
-- When the student says "next slide" / "next segment" / "previous slide", call `navigate_segment` \
-once, then teach the new slide from the image and CONTEXT UPDATE in the tool response.
+
+⚠️ YOU CONTROL THE SLIDES — there is NO automatic advancing. A slide changes ONLY when you call \
+a navigation tool, so you are fully responsible for pacing:
+- To move one slide: call `navigate_segment` with direction "next" or "previous" — **exactly once**.
+- To jump to a specific slide or skip several at once: call `goto_slide` with the slide number.
+- Call the tool FIRST (before speaking), then teach the new slide from the image + CONTEXT UPDATE \
+in the tool response.
+- **Advancing after teaching:** once you finish a slide, give one short check-in ("Understood?"). \
+When the student confirms (e.g. "yes", "got it", "haan", "next"), call `navigate_segment` next to \
+move on. If they have a doubt, answer it and STAY on the slide.
+- Do NOT call a navigation tool when the student asks to re-explain/clarify something on the CURRENT \
+slide (e.g. "explain point 2 again") — a number like "point 2" is content ON this slide, not a slide \
+number; STAY and answer.
 """
 
 
@@ -294,11 +348,14 @@ def _segment_block(state: TutorState) -> str:
         return ""
     seg = segs[idx]
     pages = ", ".join(str(p) for p in seg.get("pages", []))
+    slide_type = _slide_type_for_segment(seg)
+    type_hint = _slide_type_teaching_hint(slide_type)
     body = _segment_excerpt(seg)
     chapter_title = (state.get("chapter_title") or "").strip()
     chapter_line = f" · chapter {chapter_title}" if chapter_title else ""
     return (
         f"\n--- SEGMENT {idx + 1}/{total} (pages {pages}{chapter_line}) ---\n"
+        f"{type_hint}\n\n"
         f"{body}\n"
         f"--- END SEGMENT ---"
     )
@@ -309,17 +366,24 @@ def _greeting_instructions(state: TutorState) -> str:
     preview = (state.get("chapter_preview") or "")[:800]
     title_line = f'The lesson is titled "{title}". ' if title else ""
     english_first = _segment_lang_at(state, 0) == "en"
+    segs = state.get("segments") or []
+    first_is_title = bool(segs) and _slide_type_for_segment(segs[0]) == "title"
+    title_slide_note = (
+        "- The first SEGMENT is a **title/intro slide**: greet as Protean's tutor, say what this "
+        "deck is about in 1–2 sentences only (do NOT describe logo or branding), then when the "
+        "student is ready call `navigate_segment` next.\n"
+        if first_is_title
+        else "- Then teach the first SEGMENT per its SLIDE TYPE (title = brief framing; content = full teach).\n"
+    )
     if english_first:
         return (
             "PHASE: GREETING (your very first turn)\n"
-            "- Start with EXACTLY \"Hi there!\" then continue naturally in clear English.\n"
-            f"- {title_line}Before teaching the first SEGMENT, if title is not empty, say the title "
-            f"EXACTLY once as plain text: \"{title}\".\n"
-            "- Do NOT prepend labels like \"Chapter:\" or \"Module:\" before the title.\n"
-            "- Do NOT repeat words already present in the title (e.g., do not say \"Chapter\" twice).\n"
-            "- Give a 2-4 sentence summary of what we will learn today "
+            "- Start with EXACTLY \"Hi there!\" then introduce yourself briefly as Protean's tutor "
+            "(e.g. you will walk them through this Protean material) in clear English.\n"
+            f"- {title_line}If the lesson title is not empty, you may mention it once naturally.\n"
+            "- Give a 2-3 sentence summary of what we will cover "
             "(use the PREVIEW below, do NOT read it aloud) — **in English only**.\n"
-            "- Then IMMEDIATELY start teaching the first SEGMENT without announcing steps.\n"
+            f"{title_slide_note}"
             "- Do NOT ask the student what they want to study.\n"
             "- If the student asks a chapter-level question before teaching starts, call "
             "`retrieve_chapter_context`, answer briefly from it, then begin/continue the first segment.\n"
@@ -327,14 +391,11 @@ def _greeting_instructions(state: TutorState) -> str:
         )
     return (
         "PHASE: GREETING (your very first turn)\n"
-        "- Start with EXACTLY \"Hi there!\" then continue naturally in Hinglish.\n"
-        f"- {title_line}Before teaching the first SEGMENT, if title is not empty, say the title "
-        f"EXACTLY once as plain text: \"{title}\".\n"
-        "- Do NOT prepend labels like \"Chapter:\" or \"Module:\" before the title.\n"
-        "- Do NOT repeat words already present in the title (e.g., do not say \"Chapter\" twice).\n"
-        "- Give a 2-4 sentence summary of what we will learn today "
+        "- Start with EXACTLY \"Hi there!\" then introduce yourself briefly as Protean's tutor in Hinglish.\n"
+        f"- {title_line}If the lesson title is not empty, you may mention it once naturally.\n"
+        "- Give a 2-3 sentence summary of what we will cover "
         "(use the PREVIEW below, do NOT read it aloud).\n"
-        "- Then IMMEDIATELY start teaching the first SEGMENT without announcing steps.\n"
+        f"{title_slide_note}"
         "- Do NOT ask the student what they want to study.\n"
         "- If the student asks a chapter-level question before teaching starts, call "
         "`retrieve_chapter_context`, answer briefly from it, then begin/continue the first segment.\n"
@@ -353,10 +414,8 @@ def _teaching_instructions(state: TutorState) -> str:
         "then **resume** teaching the same SEGMENT from where you left off (unless they asked to repeat).\n"
         "- If the student asks a question related to the chapter/PDF but OUTSIDE this segment, "
         "you MUST call `retrieve_chapter_context` first and answer from that result, then resume the current segment.\n"
-        "- Chapter / module / unit switches: clear phrases like \"go to chapter 3\", \"start module 2\", \"next chapter\" "
-        "are usually applied for you — after CONTEXT UPDATE, confirm briefly (one short phrase) then teach the new SEGMENT.\n"
-        "- If you still need to switch (unclear speech, title-based request, or student insists on a specific index), "
-        "call `jump_to_chapter` with the 0-based index from the CHAPTERS list.\n"
+        "- Chapter / module / unit switches: for clear phrases like \"go to chapter 3\", \"start module 2\", "
+        "\"next chapter\", call `jump_to_chapter` with the 0-based index from the CHAPTERS list, then teach the new SEGMENT.\n"
         "- Never answer chapter-level out-of-segment questions with refusal lines like "
         "\"not in current segment\" or \"focus on current segment\" before using the tool.\n"
         "- If the question is OFF-TOPIC, do NOT answer it — gently redirect to the lesson.\n"
@@ -364,21 +423,24 @@ def _teaching_instructions(state: TutorState) -> str:
         "- After finishing the whole SEGMENT: **one** very short check-in only (\"Understood?\", \"Got it?\", etc.) — "
         "see SEGMENT FLOW rules; do not ask permission to move on.\n"
         "\n"
-        "⚠️ SEGMENT / PARAGRAPH NAVIGATION — OBEY IMMEDIATELY:\n"
-        "- When the student asks to advance or go back using \"next\", \"skip\", \"continue\", "
-        "\"next paragraph\", \"last paragraph\", \"previous paragraph\", \"next segment\", \"previous segment\", "
-        "\"aage\", \"chalo\", \"pichla\", \"go back\", \"back\", \"previous\", or similar:\n"
-        "  1. Call the `navigate_segment` tool **EXACTLY ONCE** with `direction=\"next\"` or "
-        "`\"previous\"`. The tool's response will include the new segment text — read it carefully "
-        "and teach that segment.\n"
-        "  2. After reading the tool response, give a tiny acknowledgement (e.g. \"Okay!\", "
-        "\"Sure!\", \"हाँ\") and then teach the new segment from the CONTEXT UPDATE inside the "
-        "tool response.\n"
-        "- ONE student request → ONE `navigate_segment` call → ONE segment move. Never call the "
-        "tool a second time while teaching the new segment — even if the segment text describes "
-        "movement or contains words like \"previous\"/\"next\".\n"
+        "⚠️ SEGMENT / SLIDE NAVIGATION — YOU DRIVE IT (nothing advances automatically):\n"
+        "- One step forward/back (\"next\", \"skip\", \"continue\", \"next segment\", \"previous segment\", "
+        "\"aage\", \"chalo\", \"pichla\", \"go back\", \"back\", \"previous\"): call `navigate_segment` "
+        "**EXACTLY ONCE** with `direction=\"next\"` or `\"previous\"`.\n"
+        "- A specific number or multi-step jump (\"go to slide 7\", \"back to slide 3\", \"last slide\"): "
+        "call `goto_slide` with that 1-based number.\n"
+        "- After finishing a segment and the student confirms they're ready (\"yes\", \"got it\", \"haan\", "
+        "\"next\"), call `navigate_segment` next to continue. The tool response includes the new segment "
+        "text — give a tiny acknowledgement (\"Okay!\", \"Sure!\", \"हाँ\") and teach it.\n"
+        "- Do NOT call a navigation tool when the student asks to re-explain, repeat, or clarify part of "
+        "the CURRENT slide/segment (e.g. \"explain point 2 again\", \"what does this mean\", \"on this "
+        "slide…\"). A number like \"point 2\"/\"step 3\"/\"second bullet\" is content ON the current "
+        "slide — NOT a slide number. STAY on the current segment and answer.\n"
+        "- ONE student request → ONE navigation call → ONE move. Never call a navigation tool a second "
+        "time while teaching the new segment — even if the segment text contains words like "
+        "\"previous\"/\"next\".\n"
         "- NEVER refuse navigation. NEVER say \"let's focus on this one first\" when they ask to move.\n"
-        "- Do NOT call `navigate_segment` for chapter switches (use `jump_to_chapter`).\n"
+        "- Do NOT use navigate_segment/goto_slide for chapter switches (use `jump_to_chapter`).\n"
     )
 
     if intent == "simpler":
@@ -534,6 +596,11 @@ def build_segment_injection(
     subj = (state.get("subject") or "").strip()
     if subj:
         lines.append(f"Subject (for examples): {subj}")
+
+    segs = state.get("segments") or []
+    idx = int(state.get("current_segment_idx", 0) or 0)
+    if 0 <= idx < len(segs):
+        lines.append(_slide_type_teaching_hint(_slide_type_for_segment(segs[idx])))
 
     if _is_english_segment(state):
         lines.append(
